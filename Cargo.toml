@@ -8,9 +8,28 @@ edition = "2018"
 
 [features]
 hitbox-outlines = []
+hot-keyframes = ["notify", "crossbeam-channel"]
 
 [dependencies]
-quicksilver = "0.3.20"
+# bundled input, windowing, rendering, etc.
+quicksilver = { path = "../quicksilver" }
+
+# ECS
 hecs = "0.2.5"
-ncollide2d = "0.20.0"
-nalgebra = "0.18.0"
+
+# maffs
+ncollide2d = "0.21.0"
+nalgebra = "0.19.0"
+
+# keyframe live reload
+[dependencies.notify]
+#git = "https://github.com/notify-rs/notify.git"
+#branch = "main"
+version = "5.0.0-pre.1"
+optional = true
+[dependencies.crossbeam-channel]
+version = "0.3.8"
+optional = true
+
+[patch.crates-io]
+nalgebra = { git = "https://github.com/rustsim/nalgebra.git", branch = "fix_vector_slerp" }

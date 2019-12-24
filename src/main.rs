@@ -10,7 +10,9 @@ use quicksilver::{
 type Vec2 = na::Vector2<f32>;
 type Iso2 = na::Isometry2<f32>;
 
+mod config;
 mod items;
+use config::Config;
 mod phys;
 use phys::{aiming, collision, movement};
 mod graphics;
@@ -19,11 +21,14 @@ use graphics::images::{fetch_images, ImageMap};
 struct Game {
     world: World,
     images: ImageMap,
+    config: Config,
 }
 
 impl State for Game {
     fn new() -> Result<Game> {
+        let config = Config::load().unwrap_or_else(|e| panic!("{}", e));
         let images = fetch_images();
+
         let mut world = World::new();
 
         let spears: Vec<hecs::Entity> = (0..1000)
@@ -31,14 +36,14 @@ impl State for Game {
                 world.spawn((
                     graphics::Appearance {
                         kind: graphics::AppearanceKind::image("spear"),
-                        alignment: graphics::Alignment::Bottom(40.0),
-                        z_offset: 250.0,
-                        .. Default::default()
+                        z_offset: 90.0,
+                        ..Default::default()
                     },
                     aiming::Weapon::new()
+                        .with_bottom_padding(30.0)
                         .with_offset(Vec2::y() * -30.0)
-                        .with_equip_time(45)
-                        .with_speed(5.0),
+                        .with_equip_time(120)
+                        .with_speed(15.3),
                 ))
             })
             .collect();
@@ -46,7 +51,7 @@ impl State for Game {
         world.spawn((
             graphics::Appearance {
                 kind: graphics::AppearanceKind::image("ferris"),
-                .. Default::default()
+                ..Default::default()
             },
             Cuboid::new(Vec2::new(58.0, 8.0)),
             Iso2::translation(300.0, 300.0),
@@ -60,7 +65,7 @@ impl State for Game {
             world.spawn((
                 graphics::Appearance {
                     kind: graphics::AppearanceKind::image("fence"),
-                    .. Default::default()
+                    ..Default::default()
                 },
                 collision::CollisionStatic,
                 Cuboid::new(Vec2::new(64.0, 8.0)),
@@ -68,7 +73,11 @@ impl State for Game {
             ));
         }
 
-        Ok(Game { world, images })
+        Ok(Game {
+            world,
+            images,
+            config,
+        })
     }
 
     fn draw(&mut self, window: &mut Window) -> Result<()> {
@@ -78,10 +87,13 @@ impl State for Game {
     }
 
     fn update(&mut self, window: &mut Window) -> Result<()> {
+        #[cfg(feature = "hot-keyframes")]
+        self.config.reload();
+
         movement::movement(&mut self.world, window);
         phys::velocity(&mut self.world);
         collision::collision(&mut self.world);
-        aiming::aiming(&mut self.world, window);
+        aiming::aiming(&mut self.world, window, &self.config);
 
         Ok(())
     }

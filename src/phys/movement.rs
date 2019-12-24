@@ -1,5 +1,5 @@
-use crate::Iso2;
 use crate::graphics::Appearance;
+use crate::Iso2;
 use hecs::World;
 use quicksilver::{geom::Vector, input::Key, lifecycle::Window};
 
@@ -27,7 +27,10 @@ pub fn movement(world: &mut World, window: &mut Window) {
         .normalize();
 
     if move_vec.len2() > 0.0 {
-        for (_, (iso, _, appearance)) in world.query::<(&mut Iso2, &PlayerControlled, &mut Appearance)>().iter() {
+        for (_, (iso, _, appearance)) in world
+            .query::<(&mut Iso2, &PlayerControlled, &mut Appearance)>()
+            .iter()
+        {
             iso.translation.vector += move_vec.into_vector() * SPEED;
             appearance.flip_x = move_vec.x > 0.0;
         }

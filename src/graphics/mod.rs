@@ -9,7 +9,7 @@ use crate::{na, Iso2, Vec2};
 use hecs::World;
 use ncollide2d::shape::Cuboid;
 use quicksilver::{
-    geom::{Rectangle, Transform, Vector},
+    geom::{Rectangle, Transform},
     graphics::{
         Background::{Col, Img},
         Color,
@@ -98,12 +98,16 @@ pub fn render(window: &mut Window, world: &World, images: &mut ImageMap) -> Resu
 
     let mut draw_query = world.query::<(&Appearance, Option<&Cuboid<f32>>, &Iso2)>();
 
+    #[allow(unused_variables)]
     for (_, (appearance, cuboid, iso)) in draw_query.iter() {
         let rot = Transform::rotate(iso.rotation.angle().to_degrees());
         let loc = iso.translation.vector;
 
         match &appearance.kind {
-            AppearanceKind::Color { color, rectangle: rect } => {
+            AppearanceKind::Color {
+                color,
+                rectangle: rect,
+            } => {
                 let offset = appearance.alignment.offset(rect);
 
                 let mut transform = Transform::translate(loc - (rect.size / 2.0).into_vector())
@@ -129,9 +133,10 @@ pub fn render(window: &mut Window, world: &World, images: &mut ImageMap) -> Resu
                         rect.size *= *scale;
                         let offset = appearance.alignment.offset(&rect);
 
-                        let mut transform = Transform::translate(loc - (rect.size / 2.0).into_vector())
-                            * rot
-                            * Transform::translate(offset);
+                        let mut transform =
+                            Transform::translate(loc - (rect.size / 2.0).into_vector())
+                                * rot
+                                * Transform::translate(offset);
                         if appearance.flip_x {
                             transform = transform * Transform::scale((-1, 1));
                         }
