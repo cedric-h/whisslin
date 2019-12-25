@@ -17,65 +17,101 @@ pub struct KeyFrame {
     pub bottom_padding: f32,
 }
 
+#[derive(PartialEq, Clone, Copy)]
+enum WielderState {
+    /// That awkward phase between Shooting
+    /// and the beginning of the Reloading.
+    Summoning { timer: u16 },
+
+    /// Watch an animation and think about how you just
+    /// wasted that last spear.
+    Reloading { timer: u16 },
+
+    /// Start holding down the mouse button to begin readying
+    Loaded,
+
+    /// If you keep holding down the mouse button you'll be able to shoot,
+    /// if you let go you'll go back to Loaded.
+    Readying { timer: u16 },
+    
+    /// Let go to fire!
+    /// TODO: A way to leave this stage.
+    Readied,
+
+    /// Lasts exactly one frame.
+    /// During this frame, the projectile is launched.
+    Shooting,
+}
+
 pub struct Wielder {
-    state: WeaponState
+    state: WielderState
 }
 impl Wielder {
     pub fn new() -> Self {
         Self {
-            state: WeaponState::Loaded,
+            state: WielderState::Loaded,
         }
     }
+
+    /// The length of the Summoning State,
+    /// i.e. how long it takes for another weapon
+    /// to pop out of thin air and into the player's hand
+    const SUMMONING_TIME: u16 = 25;
     
     /// Moves timers forward
     fn advance_state(&mut self, mouse_down: bool, weapon: &Weapon) {
+        use WielderState::*;
+
         self.state = match self.state {
-            WeaponState::Reloading { mut timer } => {
+            Summoning { mut timer } => {
+                timer += 1;
+                if timer >= Self::SUMMONING_TIME {
+                    Reloading { timer: 0 }
+                } else {
+                    Summoning { timer }
+                }
+            }
+            Reloading { mut timer } => {
                 timer += 1;
                 if timer >= weapon.equip_time {
-                    WeaponState::Loaded
+                    Loaded
                 } else {
-                    WeaponState::Reloading { timer }
+                    Reloading { timer }
                 }
             }
-            WeaponState::Loaded => {
+            Loaded => {
                 if mouse_down {
-                    WeaponState::Readying { timer: 0 }
+                    Readying { timer: 0 }
                 } else {
-                    WeaponState::Loaded
+                    Loaded
                 }
             }
-            WeaponState::Readying { mut timer } => {
+            Readying { mut timer } => {
                 timer += 1;
                 if !mouse_down { 
-                    WeaponState::Loaded
+                    Loaded
                 } else if timer >= weapon.readying_time {
-                    WeaponState::Readied
+                    Readied
                 } else {
-                    WeaponState::Readying { timer }
+                    Readying { timer }
                 }
             }
-            WeaponState::Readied => {
+            Readied => {
                 if !mouse_down {
-                    WeaponState::Shooting
+                    Shooting
                 } else {
-                    WeaponState::Readied
+                    Readied
                 }
             },
-            WeaponState::Shooting => {
-                WeaponState::Reloading { timer: 0 }
+            Shooting => {
+                Summoning { timer: 0 }
             }
         };
     }
-}
 
-#[derive(PartialEq, Clone, Copy)]
-enum WeaponState {
-    Reloading { timer: u16 },
-    Loaded,
-    Readying { timer: u16 },
-    Readied,
-    Shooting,
+    fn shooting(&self) -> bool {
+        self.state == WielderState::Shooting
+    }
 }
 
 pub struct Weapon {
@@ -110,21 +146,25 @@ impl Weapon {
     /// # Input
     /// Takes a unit vector representing the delta
     /// between the player's world position and the mouse.
+    /// (These are used to generate the implied last frame, i.e. 
+    /// where the spear points at the mouse)
     /// Also takes the keyframes from the game's configuration files.
     ///
     /// # Output
     /// This function returns a KeyFrame representing how
     /// the weapon should be oriented at this point in time.
-    /// It also returns a boolean indicating whether or not to shoot.
+    ///
+    /// However, if the weapon shouldn't be given a position at all
+    /// (so that it remains unrendered) None is returned.
     fn animation_frame(
         &mut self,
         mouse_delta: Unit<Vec2>,
-        state: WeaponState,
+        state: WielderState,
         keyframes: &Vec<KeyFrame>,
-    ) -> (KeyFrame, bool) {
+    ) -> Option<KeyFrame> {
 
-        // the implied last frame, pointing towards the mouse
-        // also returned if state is "Readied"
+        // the implied last frame of the reloading animtion,
+        // pointing towards the mouse.
         let mut last = KeyFrame {
             time: 1.0,
             pos: self.offset,
@@ -134,24 +174,22 @@ impl Weapon {
 
         // read timers
         match state {
-            WeaponState::Reloading { timer } => {
-                (
-                    Self::reloading_animation_frame(
-                        (timer as f32) / (self.equip_time as f32),
-                        keyframes,
-                        &last
-                    ),
-                    false
-                )
+            WielderState::Summoning { .. } => None,
+            WielderState::Reloading { timer } => {
+                Some(Self::reloading_animation_frame(
+                    (timer as f32) / (self.equip_time as f32),
+                    keyframes,
+                    &last
+                ))
             }
-            WeaponState::Loaded => (last, false),
-            WeaponState::Readying { timer } => {
+            WielderState::Loaded => Some(last),
+            WielderState::Readying { timer } => {
                 last.bottom_padding *= 1.0 - (timer as f32) / (self.readying_time as f32);
-                (last, false)
+                Some(last)
             }
-            WeaponState::Readied | WeaponState::Shooting => {
+            WielderState::Readied | WielderState::Shooting => {
                 last.bottom_padding = 0.0;
-                (last, state == WeaponState::Shooting)
+                Some(last)
             },
         }
     }
@@ -211,7 +249,7 @@ pub fn aiming(world: &mut World, window: &mut Window, cfg: &Config) {
                 (wielder_iso.translation.vector + weapon.offset) - mouse.pos().into_vector(),
             );
             wielder.advance_state(mouse[MouseButton::Left].is_down(), &weapon);
-            let (mut frame, should_shoot) = weapon.animation_frame(delta, wielder.state, &cfg.keyframes);
+            let mut frame = weapon.animation_frame(delta, wielder.state, &cfg.keyframes)?;
 
             // apply the bottom padding to the Appearance
             appearance.alignment = crate::graphics::Alignment::Bottom(frame.bottom_padding);
@@ -241,7 +279,7 @@ pub fn aiming(world: &mut World, window: &mut Window, cfg: &Config) {
             wep_iso.rotation = rot;
 
             // queue launch if clicking
-            if should_shoot {
+            if wielder.shooting() {
                 inv.consume_equipped();
                 Some(QueuedAction::LaunchWeapon(
                     wep_ent,
