@@ -19,12 +19,15 @@ hecs = "0.2.5"
 
 # maffs
 ncollide2d = "0.21.0"
-nalgebra = "0.19.0"
+nalgebra = { version = "0.19.0", features = ["serde-serialize"] }
+
+# serialization
+toml = "0.5.5"
+serde = "1.0.104"
+serde_derive = "1.0.104"
 
 # keyframe live reload
 [dependencies.notify]
-#git = "https://github.com/notify-rs/notify.git"
-#branch = "main"
 version = "5.0.0-pre.1"
 optional = true
 [dependencies.crossbeam-channel]

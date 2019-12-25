@@ -40,9 +40,9 @@ impl State for Game {
                         ..Default::default()
                     },
                     aiming::Weapon::new()
-                        .with_bottom_padding(30.0)
+                        .with_bottom_padding(25.0)
                         .with_offset(Vec2::y() * -30.0)
-                        .with_equip_time(120)
+                        .with_equip_time(50)
                         .with_speed(15.3),
                 ))
             })
@@ -56,7 +56,7 @@ impl State for Game {
             Cuboid::new(Vec2::new(58.0, 8.0)),
             Iso2::translation(300.0, 300.0),
             movement::PlayerControlled,
-            aiming::PlayerControlled,
+            aiming::Wielder::new(),
             items::Inventory::new_with(&spears[1..1000], &world)
                 .unwrap()
                 .with_equip(spears[0], &world),
