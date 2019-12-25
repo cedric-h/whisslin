@@ -91,7 +91,7 @@ impl Config {
 
     fn load_keyframes() -> Result<Vec<KeyFrame>, Error> {
         #[cfg(not(feature = "hot-keyframes"))]
-        let input = include_str!("../keyframes");
+        let input = include_str!("../keyframes.toml");
 
         #[cfg(feature = "hot-keyframes")]
         let tempput = {

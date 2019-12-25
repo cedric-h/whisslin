@@ -39,11 +39,13 @@ impl State for Game {
                         z_offset: 90.0,
                         ..Default::default()
                     },
-                    aiming::Weapon::new()
-                        .with_bottom_padding(25.0)
-                        .with_offset(Vec2::y() * -30.0)
-                        .with_equip_time(50)
-                        .with_speed(15.3),
+                    aiming::Weapon {
+                        bottom_padding: 25.0,
+                        offset: Vec2::y() * -30.0,
+                        equip_time: 50,
+                        speed: 15.3,
+                        .. Default::default()
+                    }
                 ))
             })
             .collect();
