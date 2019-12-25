@@ -19,8 +19,9 @@ pub struct KeyFrame {
 
 #[derive(PartialEq, Clone, Copy)]
 enum WielderState {
-    /// That awkward phase between Shooting
-    /// and the beginning of the Reloading.
+    /// That awkward phase between Shooting and
+    /// the beginning of Reloading, when a new
+    /// weapon is being whipped out of thin air.
     Summoning { timer: u16 },
 
     /// Watch an animation and think about how you just
