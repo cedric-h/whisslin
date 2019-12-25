@@ -26,7 +26,7 @@ struct Game {
 
 impl State for Game {
     fn new() -> Result<Game> {
-        let config = Config::load().unwrap_or_else(|e| panic!("{}", e));
+        let config = Config::new().unwrap_or_else(|e| panic!("{}", e));
         let images = fetch_images();
 
         let mut world = World::new();
@@ -52,11 +52,11 @@ impl State for Game {
 
         world.spawn((
             graphics::Appearance {
-                kind: graphics::AppearanceKind::image("ferris"),
+                kind: graphics::AppearanceKind::image(&config.player.image),
                 ..Default::default()
             },
-            Cuboid::new(Vec2::new(58.0, 8.0)),
-            Iso2::translation(300.0, 300.0),
+            Cuboid::new(config.player.size / 2.0),
+            Iso2::translation(config.player.pos.x, config.player.pos.y),
             movement::PlayerControlled,
             aiming::Wielder::new(),
             items::Inventory::new_with(&spears[1..1000], &world)
@@ -89,7 +89,7 @@ impl State for Game {
     }
 
     fn update(&mut self, window: &mut Window) -> Result<()> {
-        #[cfg(feature = "hot-keyframes")]
+        #[cfg(feature = "hot-config")]
         self.config.reload();
 
         movement::movement(&mut self.world, window);

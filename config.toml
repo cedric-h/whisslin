@@ -1,3 +1,6 @@
+# speed doesn't work yet
+player = { speed = 4, image = "ferris", size = [58, 8], pos = [300, 300] }
+
 keyframes = [
 	{ time = 0.0, pos = [0, 0], rot = 25, bottom_padding = 0.0 },
 	{ time = 0.2, pos = [40, -50], rot = 45, bottom_padding = -60.0 },

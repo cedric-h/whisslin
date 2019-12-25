@@ -8,11 +8,11 @@ edition = "2018"
 
 [features]
 hitbox-outlines = []
-hot-keyframes = ["notify", "crossbeam-channel"]
+hot-config = ["notify", "crossbeam-channel"]
 
 [dependencies]
 # bundled input, windowing, rendering, etc.
-quicksilver = { path = "../quicksilver" }
+quicksilver = { git = "https://github.com/cedric-h/quicksilver.git", branch = "update-rustsim-crates" }
 
 # ECS
 hecs = "0.2.5"
