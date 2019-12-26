@@ -11,12 +11,15 @@ type Vec2 = na::Vector2<f32>;
 type Iso2 = na::Isometry2<f32>;
 
 mod config;
+mod farm;
 mod items;
+mod tilemap;
 use config::Config;
 mod phys;
 use phys::{aiming, collision, movement};
 mod graphics;
 use graphics::images::{fetch_images, ImageMap};
+use tilemap::new_tilemap;
 
 struct Game {
     world: World,
@@ -44,8 +47,8 @@ impl State for Game {
                         offset: Vec2::y() * -30.0,
                         equip_time: 50,
                         speed: 15.3,
-                        .. Default::default()
-                    }
+                        ..Default::default()
+                    },
                 ))
             })
             .collect();
@@ -74,6 +77,8 @@ impl State for Game {
                 Iso2::translation(500.0 + (50.0 * i as f32), 300.0 + (50.0 * i as f32)),
             ));
         }
+        // Tilemap stuffs
+        new_tilemap(&config.tilemap, &config.tiles, &mut world);
 
         Ok(Game {
             world,

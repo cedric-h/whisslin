@@ -1,10 +1,11 @@
 use crate::phys::aiming::KeyFrame;
 use crate::{na, Vec2};
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::fmt;
 use toml::value::Table;
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct PlayerConfig {
     pub speed: f32,
     pub image: String,
@@ -17,15 +18,17 @@ impl Default for PlayerConfig {
             speed: 4.0,
             image: String::from("player"),
             size: Vec2::new(58.0, 8.0),
-            pos: Vec2::new(300.0, 300.0)
+            pos: Vec2::new(300.0, 300.0),
         }
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct SerdeConfig {
     keyframes: Vec<Table>,
     player: PlayerConfig,
+    tiles: HashMap<String, TileProperty>,
+    tilemap: String,
 }
 
 #[cfg(feature = "hot-config")]
@@ -50,7 +53,28 @@ impl ReloadingHandlers {
 
         Self {
             notify: rx,
-            watcher
+            watcher,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TileProperty {
+    pub name: String,
+    pub image: String,
+    #[serde(default)]
+    pub farmable: bool,
+    #[serde(default)]
+    pub collidable: bool,
+}
+
+impl Default for TileProperty {
+    fn default() -> Self {
+        Self {
+            name: String::from("unknown"),
+            image: String::from("unknown"),
+            farmable: false,
+            collidable: false,
         }
     }
 }
@@ -59,14 +83,14 @@ impl ReloadingHandlers {
 pub struct Config {
     pub keyframes: Vec<KeyFrame>,
     pub player: PlayerConfig,
-
+    pub tiles: HashMap<String, TileProperty>,
+    pub tilemap: String,
     // internal hot reloading stuff
     #[cfg(feature = "hot-config")]
     reloading_handlers: Option<ReloadingHandlers>,
 }
 impl Config {
     pub fn new() -> Result<Self, Error> {
-
         let mut s = Self::default();
         s.load()?;
 
@@ -89,7 +113,7 @@ impl Config {
             println!("Change detected, reloading config.toml file!");
             match self.load() {
                 Err(e) => println!("Couldn't load new keyframe file: {}", e),
-                Ok(_) => println!("Reload successful!")
+                Ok(_) => println!("Reload successful!"),
             }
         }
     }
@@ -117,6 +141,8 @@ impl Config {
 
         self.keyframes = keyframes_from_tables(serde_config.keyframes)?;
         self.player = serde_config.player;
+        self.tiles = serde_config.tiles;
+        self.tilemap = serde_config.tilemap;
 
         Ok(())
     }
@@ -144,17 +170,17 @@ fn keyframes_from_tables(table: Vec<Table>) -> Result<Vec<KeyFrame>, Error> {
                 rot: na::Unit::new_normalize(
                     na::UnitComplex::from_angle(
                         keyframe
-                        .remove("rot")
-                        .ok_or(NoField("rot"))?
-                        .try_into::<f32>()?
-                        .to_radians(),
-                        )
+                            .remove("rot")
+                            .ok_or(NoField("rot"))?
+                            .try_into::<f32>()?
+                            .to_radians(),
+                    )
                     .transform_vector(&Vec2::x()),
-                    ),
-                    bottom_padding: keyframe
-                        .remove("bottom_padding")
-                        .ok_or(NoField("bottom_padding"))?
-                        .try_into()?,
+                ),
+                bottom_padding: keyframe
+                    .remove("bottom_padding")
+                    .ok_or(NoField("bottom_padding"))?
+                    .try_into()?,
             })
         })
         .collect()
