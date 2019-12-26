@@ -10,11 +10,96 @@ use quicksilver::lifecycle::Window;
 /// Instead of processing rotations as `UnitComplex`es,
 /// this function treats them as `Vec2`s, for ease of lerping
 /// among a host of other factors.
+#[derive(Debug, serde::Deserialize)]
 pub struct KeyFrame {
     pub time: f32,
     pub pos: Vec2,
     pub rot: na::Unit<Vec2>,
     pub bottom_padding: f32,
+}
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(try_from = "Vec<toml::value::Table>")]
+pub struct KeyFrames(Vec<KeyFrame>);
+impl std::ops::Deref for KeyFrames {
+    type Target = Vec<KeyFrame>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[derive(Debug)]
+pub enum KeyFrameParsingError {
+    NoField(&'static str),
+    TomlError(toml::de::Error),
+}
+impl std::fmt::Display for KeyFrameParsingError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Couldn't parse keyframes configuration table:")?;
+        match self {
+            KeyFrameParsingError::TomlError(e) => write!(f, "Invalid TOML provided: {}", e),
+            KeyFrameParsingError::NoField(name) => {
+                write!(f, "No field named {} could be found!", name)
+            }
+        }
+    }
+}
+impl From<toml::de::Error> for KeyFrameParsingError {
+    fn from(toml_e: toml::de::Error) -> Self {
+        KeyFrameParsingError::TomlError(toml_e)
+    }
+}
+impl std::error::Error for KeyFrameParsingError {}
+
+/// When converting from a list of Keyframes like you'd see
+/// in the config file has some key differences from the
+/// Keyframes as they're stored in memory. In the config files,
+/// the fields from the keyframes before it are inherited by
+/// the KeyFrames that come after it, if those fields are
+/// missing on the child keyframes.
+impl std::convert::TryFrom<Vec<toml::value::Table>> for KeyFrames {
+    type Error = KeyFrameParsingError;
+
+    fn try_from(table: Vec<toml::value::Table>) -> Result<Self, Self::Error> {
+        let mut before_frame = table[0].clone();
+
+        Ok(KeyFrames(
+            table
+            .into_iter()
+            .map(|mut keyframe| {
+                use KeyFrameParsingError::NoField;
+
+                for (key, val) in before_frame.iter() {
+                    if !keyframe.contains_key(key) {
+                        keyframe.insert(key.clone(), val.clone());
+                    }
+                }
+
+                before_frame = keyframe.clone();
+
+                Ok(KeyFrame {
+                    time: keyframe.remove("time").ok_or(NoField("time"))?.try_into()?,
+                    pos: keyframe.remove("pos").ok_or(NoField("pos"))?.try_into()?,
+                    rot: na::Unit::new_normalize(
+                        na::UnitComplex::from_angle(
+                            keyframe
+                            .remove("rot")
+                            .ok_or(NoField("rot"))?
+                            .try_into::<f32>()?
+                            .to_radians(),
+                        )
+                        .transform_vector(&Vec2::x()),
+                        ),
+                        bottom_padding: keyframe
+                            .remove("bottom_padding")
+                            .ok_or(NoField("bottom_padding"))?
+                            .try_into()?
+                })
+            })
+        .collect::<Result<Vec<KeyFrame>, KeyFrameParsingError>>()?
+    ))
+    }
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -159,7 +244,7 @@ impl Weapon {
         &mut self,
         mouse_delta: Unit<Vec2>,
         state: WielderState,
-        keyframes: &Vec<KeyFrame>,
+        keyframes: &KeyFrames,
     ) -> Option<KeyFrame> {
         // the implied last frame of the reloading animtion,
         // pointing towards the mouse.
@@ -192,7 +277,7 @@ impl Weapon {
 
     fn reloading_animation_frame(
         mut prog: f32,
-        keyframes: &Vec<KeyFrame>,
+        keyframes: &KeyFrames,
         last: &KeyFrame,
     ) -> KeyFrame {
         let mut frames = keyframes.iter();

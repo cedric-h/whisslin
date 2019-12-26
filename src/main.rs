@@ -15,10 +15,10 @@ const TILE_SIZE: f32 = 16.0;
 const SCALE: f32 = 3.0;
 
 mod config;
+use config::ConfigHandler;
 mod farm;
 mod items;
 mod tilemap;
-use config::Config;
 mod phys;
 use phys::{aiming, collision, movement};
 mod graphics;
@@ -27,12 +27,12 @@ use graphics::images::{fetch_images, ImageMap};
 struct Game {
     world: World,
     images: ImageMap,
-    config: Config,
+    config: ConfigHandler,
 }
 
 impl State for Game {
     fn new() -> Result<Game> {
-        let config = Config::new().unwrap_or_else(|e| panic!("{}", e));
+        let config = ConfigHandler::new().unwrap_or_else(|e| panic!("{}", e));
         let images = fetch_images();
 
         let mut world = World::new();
@@ -59,7 +59,6 @@ impl State for Game {
         world.spawn((
             graphics::Appearance {
                 kind: graphics::AppearanceKind::image(&config.player.image),
-                z_offset: 1.0,
                 ..Default::default()
             },
             Cuboid::new(config.player.size / 2.0),
