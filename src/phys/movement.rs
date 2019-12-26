@@ -3,7 +3,9 @@ use crate::Iso2;
 use hecs::World;
 use quicksilver::{geom::Vector, input::Key, lifecycle::Window};
 
-pub struct PlayerControlled;
+pub struct PlayerControlled {
+    pub speed: f32
+}
 
 pub fn movement(world: &mut World, window: &mut Window) {
     #[rustfmt::skip]
@@ -13,7 +15,6 @@ pub fn movement(world: &mut World, window: &mut Window) {
         (Key::A, Vector { x: -1.0, y:  0.0 }),
         (Key::D, Vector { x:  1.0, y:  0.0 }),
     ];
-    const SPEED: f32 = 4.0;
 
     let move_vec = KEYMAP
         .iter()
@@ -27,11 +28,11 @@ pub fn movement(world: &mut World, window: &mut Window) {
         .normalize();
 
     if move_vec.len2() > 0.0 {
-        for (_, (iso, _, appearance)) in world
+        for (_, (iso, &PlayerControlled { speed }, appearance)) in world
             .query::<(&mut Iso2, &PlayerControlled, &mut Appearance)>()
             .iter()
         {
-            iso.translation.vector += move_vec.into_vector() * SPEED;
+            iso.translation.vector += move_vec.into_vector() * speed;
             appearance.flip_x = move_vec.x > 0.0;
         }
     }

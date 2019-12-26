@@ -17,7 +17,7 @@ impl Default for PlayerConfig {
             speed: 4.0,
             image: String::from("player"),
             size: Vec2::new(58.0, 8.0),
-            pos: Vec2::new(300.0, 300.0)
+            pos: Vec2::new(300.0, 300.0),
         }
     }
 }
@@ -50,7 +50,7 @@ impl ReloadingHandlers {
 
         Self {
             notify: rx,
-            watcher
+            watcher,
         }
     }
 }
@@ -66,7 +66,6 @@ pub struct Config {
 }
 impl Config {
     pub fn new() -> Result<Self, Error> {
-
         let mut s = Self::default();
         s.load()?;
 
@@ -89,7 +88,7 @@ impl Config {
             println!("Change detected, reloading config.toml file!");
             match self.load() {
                 Err(e) => println!("Couldn't load new keyframe file: {}", e),
-                Ok(_) => println!("Reload successful!")
+                Ok(_) => println!("Reload successful!"),
             }
         }
     }
@@ -144,17 +143,17 @@ fn keyframes_from_tables(table: Vec<Table>) -> Result<Vec<KeyFrame>, Error> {
                 rot: na::Unit::new_normalize(
                     na::UnitComplex::from_angle(
                         keyframe
-                        .remove("rot")
-                        .ok_or(NoField("rot"))?
-                        .try_into::<f32>()?
-                        .to_radians(),
-                        )
+                            .remove("rot")
+                            .ok_or(NoField("rot"))?
+                            .try_into::<f32>()?
+                            .to_radians(),
+                    )
                     .transform_vector(&Vec2::x()),
-                    ),
-                    bottom_padding: keyframe
-                        .remove("bottom_padding")
-                        .ok_or(NoField("bottom_padding"))?
-                        .try_into()?,
+                ),
+                bottom_padding: keyframe
+                    .remove("bottom_padding")
+                    .ok_or(NoField("bottom_padding"))?
+                    .try_into()?,
             })
         })
         .collect()

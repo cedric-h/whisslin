@@ -10,6 +10,10 @@ use quicksilver::{
 type Vec2 = na::Vector2<f32>;
 type Iso2 = na::Isometry2<f32>;
 
+const DIMENSIONS: Vector = Vector { x: 480.0, y: 270.0 };
+const TILE_SIZE: f32 = 16.0;
+const SCALE: f32 = 3.0;
+
 mod config;
 mod items;
 use config::Config;
@@ -35,17 +39,17 @@ impl State for Game {
             .map(|_| {
                 world.spawn((
                     graphics::Appearance {
-                        kind: graphics::AppearanceKind::image("spear"),
+                        kind: graphics::AppearanceKind::image("trench_shovel"),
                         z_offset: 90.0,
                         ..Default::default()
                     },
                     aiming::Weapon {
-                        bottom_padding: 25.0,
-                        offset: Vec2::y() * -30.0,
+                        bottom_padding: 0.5,
+                        offset: Vec2::y() * -0.5,
                         equip_time: 50,
-                        speed: 15.3,
-                        .. Default::default()
-                    }
+                        speed: 3.0,
+                        ..Default::default()
+                    },
                 ))
             })
             .collect();
@@ -53,11 +57,12 @@ impl State for Game {
         world.spawn((
             graphics::Appearance {
                 kind: graphics::AppearanceKind::image(&config.player.image),
+                z_offset: 1.0,
                 ..Default::default()
             },
             Cuboid::new(config.player.size / 2.0),
             Iso2::translation(config.player.pos.x, config.player.pos.y),
-            movement::PlayerControlled,
+            movement::PlayerControlled { speed: config.player.speed },
             aiming::Wielder::new(),
             items::Inventory::new_with(&spears[1..1000], &world)
                 .unwrap()
@@ -66,14 +71,24 @@ impl State for Game {
         for i in 0..4 {
             world.spawn((
                 graphics::Appearance {
-                    kind: graphics::AppearanceKind::image("fence"),
+                    kind: graphics::AppearanceKind::image("smol_fence"),
                     ..Default::default()
                 },
                 collision::CollisionStatic,
-                Cuboid::new(Vec2::new(64.0, 8.0)),
-                Iso2::translation(500.0 + (50.0 * i as f32), 300.0 + (50.0 * i as f32)),
+                Cuboid::new(Vec2::new(1.0, 0.2) / 2.0),
+                Iso2::translation(8.0 + i as f32, 5.0),
             ));
         }
+
+        world.spawn((
+            graphics::Appearance {
+                kind: graphics::AppearanceKind::image("smol_fence"),
+                ..Default::default()
+            },
+            collision::CollisionStatic,
+            Cuboid::new(Vec2::new(1.0, 0.2)),
+            Iso2::translation(30.0, 17.0),
+        ));
 
         Ok(Game {
             world,
@@ -104,10 +119,12 @@ impl State for Game {
 fn main() {
     run::<Game>(
         "Game",
-        Vector::new(800, 600),
+        DIMENSIONS * SCALE,
         Settings {
-            //multisampling: Some(16),
-            scale: quicksilver::graphics::ImageScaleStrategy::Blur,
+            resize: quicksilver::graphics::ResizeStrategy::IntegerScale {
+                width: 480,
+                height: 270,
+            },
             ..Settings::default()
         },
     );

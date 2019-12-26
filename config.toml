@@ -1,12 +1,12 @@
 keyframes = [
-	{ time = 0.0, pos = [0, 0], rot = 25, bottom_padding = 0.0 },
-	{ time = 0.2, pos = [40, -50], rot = 45, bottom_padding = -60.0 },
+	{ time = 0.0, pos = [0, 0], rot = 25, bottom_padding = 0 },
+	{ time = 0.2, pos = [0.4, -0.5], rot = 45, bottom_padding = -1},
 	{ time = 0.5, rot = 190, bottom_padding = -10 },
 	{ time = 0.8, rot = 360, bottom_padding = 0 },
 ]
 
 [player]
-speed = 4
-image = "ferris"
-size = [58, 8]
-pos = [300, 300]
+speed = 0.1
+image = "creep"
+size = [0.7, 0.3]
+pos = [15.0, 8.5]

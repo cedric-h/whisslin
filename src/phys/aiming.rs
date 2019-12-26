@@ -34,7 +34,7 @@ enum WielderState {
     /// If you keep holding down the mouse button you'll be able to shoot,
     /// if you let go you'll go back to Loaded.
     Readying { timer: u16 },
-    
+
     /// Let go to fire!
     /// TODO: A way to leave this stage.
     Readied,
@@ -45,7 +45,7 @@ enum WielderState {
 }
 
 pub struct Wielder {
-    state: WielderState
+    state: WielderState,
 }
 impl Wielder {
     pub fn new() -> Self {
@@ -58,7 +58,7 @@ impl Wielder {
     /// i.e. how long it takes for another weapon
     /// to pop out of thin air and into the player's hand
     const SUMMONING_TIME: u16 = 25;
-    
+
     /// Moves timers forward
     fn advance_state(&mut self, mouse_down: bool, weapon: &Weapon) {
         use WielderState::*;
@@ -89,7 +89,7 @@ impl Wielder {
             }
             Readying { mut timer } => {
                 timer += 1;
-                if !mouse_down { 
+                if !mouse_down {
                     Loaded
                 } else if timer >= weapon.readying_time {
                     Readied
@@ -103,10 +103,8 @@ impl Wielder {
                 } else {
                     Readied
                 }
-            },
-            Shooting => {
-                Summoning { timer: 0 }
             }
+            Shooting => Summoning { timer: 0 },
         };
     }
 
@@ -147,7 +145,7 @@ impl Weapon {
     /// # Input
     /// Takes a unit vector representing the delta
     /// between the player's world position and the mouse.
-    /// (These are used to generate the implied last frame, i.e. 
+    /// (These are used to generate the implied last frame, i.e.
     /// where the spear points at the mouse)
     /// Also takes the keyframes from the game's configuration files.
     ///
@@ -163,7 +161,6 @@ impl Weapon {
         state: WielderState,
         keyframes: &Vec<KeyFrame>,
     ) -> Option<KeyFrame> {
-
         // the implied last frame of the reloading animtion,
         // pointing towards the mouse.
         let mut last = KeyFrame {
@@ -176,13 +173,11 @@ impl Weapon {
         // read timers
         match state {
             WielderState::Summoning { .. } => None,
-            WielderState::Reloading { timer } => {
-                Some(Self::reloading_animation_frame(
-                    (timer as f32) / (self.equip_time as f32),
-                    keyframes,
-                    &last
-                ))
-            }
+            WielderState::Reloading { timer } => Some(Self::reloading_animation_frame(
+                (timer as f32) / (self.equip_time as f32),
+                keyframes,
+                &last,
+            )),
             WielderState::Loaded => Some(last),
             WielderState::Readying { timer } => {
                 last.bottom_padding *= 1.0 - (timer as f32) / (self.readying_time as f32);
@@ -191,11 +186,15 @@ impl Weapon {
             WielderState::Readied | WielderState::Shooting => {
                 last.bottom_padding = 0.0;
                 Some(last)
-            },
+            }
         }
     }
 
-    fn reloading_animation_frame(mut prog: f32, keyframes: &Vec<KeyFrame>, last: &KeyFrame) -> KeyFrame {
+    fn reloading_animation_frame(
+        mut prog: f32,
+        keyframes: &Vec<KeyFrame>,
+        last: &KeyFrame,
+    ) -> KeyFrame {
         let mut frames = keyframes.iter();
 
         // find the key frames before and after our current time
@@ -217,14 +216,13 @@ impl Weapon {
         // i.e. 1 would mean it's literally rf.time, 0 is literally lf.time
         prog = (prog - lf.time) / (rf.time - lf.time);
 
-        KeyFrame { 
+        KeyFrame {
             time: prog,
             pos: lf.pos.lerp(&rf.pos, prog),
             rot: lf.rot.slerp(&rf.rot, prog),
             bottom_padding: lf.bottom_padding + (rf.bottom_padding - lf.bottom_padding) * prog,
         }
     }
-
 }
 
 enum QueuedAction {
@@ -259,9 +257,10 @@ pub fn aiming(world: &mut World, window: &mut Window, cfg: &Config) {
             frame.pos += wielder_iso.translation.vector;
 
             // get the final rotation by converting it to a UnitComplex and adjusting
-            let rot = UnitComplex::rotation_between_axis(&Unit::new_unchecked(Vec2::x()), &frame.rot)
-                * UnitComplex::new(-std::f32::consts::FRAC_PI_2);
-                //* UnitComplex::rotation_between_axis(&Unit::new_unchecked(Vec2::x()), &delta);
+            let rot =
+                UnitComplex::rotation_between_axis(&Unit::new_unchecked(Vec2::x()), &frame.rot)
+                    * UnitComplex::new(-std::f32::consts::FRAC_PI_2);
+            //* UnitComplex::rotation_between_axis(&Unit::new_unchecked(Vec2::x()), &delta);
 
             // get the weapon's current position if it has one,
             // otherwise get one inserted onto it ASAP.

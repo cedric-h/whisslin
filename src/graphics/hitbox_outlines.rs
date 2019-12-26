@@ -5,7 +5,7 @@ use quicksilver::graphics::{Background::Col, Color};
 use quicksilver::lifecycle::Window;
 
 pub fn debug_lines(window: &mut Window, cuboid: &Cuboid<f32>, iso: &Iso2, alpha: f32) {
-    let mut debug_line = quicksilver::geom::Line::new((0.0, 0.0), (0.0, 0.0)).with_thickness(2.0);
+    let mut debug_line = quicksilver::geom::Line::new((0.0, 0.0), (0.0, 0.0)).with_thickness(0.04);
 
     let pos = Transform::translate(iso.translation.vector);
     let rot = Transform::rotate(iso.rotation.angle().to_degrees());
