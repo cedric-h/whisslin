@@ -1,10 +1,12 @@
 use crate::phys::aiming::KeyFrame;
+use crate::tilemap::TileProperties;
 use crate::{na, Vec2};
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::fmt;
 use toml::value::Table;
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct PlayerConfig {
     pub speed: f32,
     pub image: String,
@@ -22,10 +24,12 @@ impl Default for PlayerConfig {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct SerdeConfig {
     keyframes: Vec<Table>,
     player: PlayerConfig,
+    tiles: HashMap<String, TileProperties>,
+    tilemap: String,
 }
 
 #[cfg(feature = "hot-config")]
@@ -59,7 +63,8 @@ impl ReloadingHandlers {
 pub struct Config {
     pub keyframes: Vec<KeyFrame>,
     pub player: PlayerConfig,
-
+    pub tiles: HashMap<String, TileProperties>,
+    pub tilemap: String,
     // internal hot reloading stuff
     #[cfg(feature = "hot-config")]
     reloading_handlers: Option<ReloadingHandlers>,
@@ -116,6 +121,8 @@ impl Config {
 
         self.keyframes = keyframes_from_tables(serde_config.keyframes)?;
         self.player = serde_config.player;
+        self.tiles = serde_config.tiles;
+        self.tilemap = serde_config.tilemap;
 
         Ok(())
     }

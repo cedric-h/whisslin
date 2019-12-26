@@ -4,7 +4,7 @@ use hecs::World;
 use quicksilver::{geom::Vector, input::Key, lifecycle::Window};
 
 pub struct PlayerControlled {
-    pub speed: f32
+    pub speed: f32,
 }
 
 pub fn movement(world: &mut World, window: &mut Window) {

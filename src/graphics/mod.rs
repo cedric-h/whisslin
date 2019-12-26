@@ -5,15 +5,14 @@ use images::ImageMap;
 #[cfg(feature = "hitbox-outlines")]
 mod hitbox_outlines;
 
-use crate::{DIMENSIONS, TILE_SIZE, na, Iso2, Vec2};
+use crate::{na, Iso2, Vec2, DIMENSIONS, TILE_SIZE};
 use hecs::World;
 use ncollide2d::shape::Cuboid;
 use quicksilver::{
     geom::{Rectangle, Transform},
     graphics::{
-        View,
         Background::{Col, Img},
-        Color,
+        Color, View,
     },
     lifecycle::Window,
     Result,
@@ -99,7 +98,9 @@ pub fn render(window: &mut Window, world: &World, images: &mut ImageMap) -> Resu
     window.clear(colors::DISCORD)?;
 
     #[allow(unused_variables)]
-    for (_, (appearance, cuboid, iso)) in &mut world.query::<(&Appearance, Option<&Cuboid<f32>>, &Iso2)>() {
+    for (_, (appearance, cuboid, iso)) in
+        &mut world.query::<(&Appearance, Option<&Cuboid<f32>>, &Iso2)>()
+    {
         let rot = Transform::rotate(iso.rotation.angle().to_degrees());
         let loc = iso.translation.vector;
 
@@ -133,9 +134,10 @@ pub fn render(window: &mut Window, world: &World, images: &mut ImageMap) -> Resu
                         rect.size *= *scale / 16.0;
                         let offset = appearance.alignment.offset(&rect);
 
-                        let mut transform = Transform::translate(loc - (rect.size / 2.0).into_vector())
-                            * rot
-                            * Transform::translate(offset);
+                        let mut transform =
+                            Transform::translate(loc - (rect.size / 2.0).into_vector())
+                                * rot
+                                * Transform::translate(offset);
                         if appearance.flip_x {
                             transform = transform * Transform::scale((-1, 1));
                         }

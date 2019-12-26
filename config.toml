@@ -5,6 +5,35 @@ keyframes = [
 	{ time = 0.8, rot = 360, bottom_padding = 0 },
 ]
 
+tilemap = """\
+GrGrGrGrGr
+DiDiDiDiDi
+GrDiGrDiGr
+DiGrDiGrDi
+GrGrDiDiGr
+GrGrDiDiGr
+GrGrGrGrGr
+FrFrFrFrBd
+"""
+
+[tiles.Gr]
+name = "Grass"
+image = "grass"
+
+[tiles.Di]
+name = "Dirt"
+image = "dirt"
+
+[tiles.Fr]
+name = "Field Ready"
+image = "field-ready"
+flags = ["farmable"]
+
+[tiles.Bd]
+name = "Bad"
+image = "unknown"
+flags = ["collidable"]
+
 [player]
 speed = 0.1
 image = "creep"

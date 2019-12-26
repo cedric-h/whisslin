@@ -15,7 +15,9 @@ const TILE_SIZE: f32 = 16.0;
 const SCALE: f32 = 3.0;
 
 mod config;
+mod farm;
 mod items;
+mod tilemap;
 use config::Config;
 mod phys;
 use phys::{aiming, collision, movement};
@@ -62,7 +64,9 @@ impl State for Game {
             },
             Cuboid::new(config.player.size / 2.0),
             Iso2::translation(config.player.pos.x, config.player.pos.y),
-            movement::PlayerControlled { speed: config.player.speed },
+            movement::PlayerControlled {
+                speed: config.player.speed,
+            },
             aiming::Wielder::new(),
             items::Inventory::new_with(&spears[1..1000], &world)
                 .unwrap()
@@ -79,6 +83,8 @@ impl State for Game {
                 Iso2::translation(8.0 + i as f32, 5.0),
             ));
         }
+        // Tilemap stuffs
+        tilemap::build_tile_entities(&config.tilemap, &config.tiles, &mut world);
 
         world.spawn((
             graphics::Appearance {
