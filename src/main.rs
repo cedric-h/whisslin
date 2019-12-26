@@ -11,6 +11,7 @@ type Vec2 = na::Vector2<f32>;
 type Iso2 = na::Isometry2<f32>;
 
 mod config;
+mod farm;
 mod items;
 mod tilemap;
 use config::Config;
