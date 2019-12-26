@@ -120,7 +120,7 @@ impl ConfigHandler {
                 Ok(config) => {
                     println!("Reload successful!");
                     self.config = config;
-                },
+                }
             }
         }
     }

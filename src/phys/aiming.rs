@@ -66,39 +66,39 @@ impl std::convert::TryFrom<Vec<toml::value::Table>> for KeyFrames {
 
         Ok(KeyFrames(
             table
-            .into_iter()
-            .map(|mut keyframe| {
-                use KeyFrameParsingError::NoField;
+                .into_iter()
+                .map(|mut keyframe| {
+                    use KeyFrameParsingError::NoField;
 
-                for (key, val) in before_frame.iter() {
-                    if !keyframe.contains_key(key) {
-                        keyframe.insert(key.clone(), val.clone());
+                    for (key, val) in before_frame.iter() {
+                        if !keyframe.contains_key(key) {
+                            keyframe.insert(key.clone(), val.clone());
+                        }
                     }
-                }
 
-                before_frame = keyframe.clone();
+                    before_frame = keyframe.clone();
 
-                Ok(KeyFrame {
-                    time: keyframe.remove("time").ok_or(NoField("time"))?.try_into()?,
-                    pos: keyframe.remove("pos").ok_or(NoField("pos"))?.try_into()?,
-                    rot: na::Unit::new_normalize(
-                        na::UnitComplex::from_angle(
-                            keyframe
-                            .remove("rot")
-                            .ok_or(NoField("rot"))?
-                            .try_into::<f32>()?
-                            .to_radians(),
-                        )
-                        .transform_vector(&Vec2::x()),
+                    Ok(KeyFrame {
+                        time: keyframe.remove("time").ok_or(NoField("time"))?.try_into()?,
+                        pos: keyframe.remove("pos").ok_or(NoField("pos"))?.try_into()?,
+                        rot: na::Unit::new_normalize(
+                            na::UnitComplex::from_angle(
+                                keyframe
+                                    .remove("rot")
+                                    .ok_or(NoField("rot"))?
+                                    .try_into::<f32>()?
+                                    .to_radians(),
+                            )
+                            .transform_vector(&Vec2::x()),
                         ),
                         bottom_padding: keyframe
                             .remove("bottom_padding")
                             .ok_or(NoField("bottom_padding"))?
-                            .try_into()?
+                            .try_into()?,
+                    })
                 })
-            })
-        .collect::<Result<Vec<KeyFrame>, KeyFrameParsingError>>()?
-    ))
+                .collect::<Result<Vec<KeyFrame>, KeyFrameParsingError>>()?,
+        ))
     }
 }
 
