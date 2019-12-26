@@ -12,7 +12,7 @@ pub struct TileProperty {
     #[serde(default)]
     pub farmable: bool,
     #[serde(default)]
-    pub collidable: bool
+    pub collidable: bool,
 }
 impl Default for TileProperty {
     fn default() -> Self {

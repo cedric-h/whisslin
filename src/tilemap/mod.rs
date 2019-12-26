@@ -11,28 +11,33 @@ pub fn new_tilemap(tilemap: &str, tile_prop: &HashMap<String, TileProperty>, wor
     let default = TileProperty::default();
 
     tilemap.split_whitespace().enumerate().for_each(|(y, row)| {
-        row.split(',').enumerate().for_each(|(x, tile)| {
-            let tile_details = tile_prop.get(tile).unwrap_or(&default);
+        row.chars()
+            .collect::<Vec<_>>()
+            .chunks(2)
+            .map(|x| x.iter().collect::<String>())
+            .enumerate()
+            .for_each(|(x, tile)| {
+                let tile_details = tile_prop.get(&tile).unwrap_or(&default);
 
-            tile_builder
-                .add(graphics::Appearance {
-                    kind: graphics::AppearanceKind::image(tile_details.image.clone()),
-                    alignment: graphics::Alignment::Center,
-                    z_offset: -1000.0,
-                    ..Default::default()
-                })
-                .add(Iso2::translation(0.5 + (x as f32), 0.5 + (y as f32)));
-
-            if tile_details.farmable {
-                tile_builder.add(Farmable {});
-            }
-            if tile_details.collidable {
                 tile_builder
-                    .add(collision::CollisionStatic)
-                    .add(Cuboid::new(Vec2::repeat(0.5)));
-            }
+                    .add(graphics::Appearance {
+                        kind: graphics::AppearanceKind::image(tile_details.image.clone()),
+                        alignment: graphics::Alignment::Center,
+                        z_offset: -1000.0,
+                        ..Default::default()
+                    })
+                    .add(Iso2::translation(0.5 + (x as f32), 0.5 + (y as f32)));
 
-            world.spawn(tile_builder.build());
-        })
+                if tile_details.farmable {
+                    tile_builder.add(Farmable {});
+                }
+                if tile_details.collidable {
+                    tile_builder
+                        .add(collision::CollisionStatic)
+                        .add(Cuboid::new(Vec2::repeat(0.5)));
+                }
+
+                world.spawn(tile_builder.build());
+            })
     })
 }

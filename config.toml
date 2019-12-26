@@ -6,30 +6,39 @@ keyframes = [
 ]
 
 tilemap = """\
-gr,gr,gr,gr,gr
-di,di,di,di,di
-gr,di,gr,di,gr
-di,gr,di,gr,di
-gr,gr,di,di,gr
-gr,gr,di,di,gr
-gr,gr,gr,gr,gr
-fr,fr,fr,fr,bd
+GrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrDiDi
+GrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrDiGrGrGrGrDi
+GrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrDiGrGrGr
+GrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGr
+GrGrGrGrGrGrGrGrDiGrGrGrGrGrDiGrGrGrGrGrGrGrGrDiGrGrGrGrGrGr
+GrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrDiGrGrGrGrGrGrDiGrGr
+GrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrDiGrDiDiGrGrDiDiGrDiGrGrGrGr
+GrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrFrFrFrFrFrFrFrFrGrGrGrGrGr
+GrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrDiDiDiDiDiDiDiDiDiDiDiGrDiGr
+GrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrFrFrFrFrFrFrFrFrGrGrGrGrGr
+GrGrGrGrGrGrGrGrGrGrGrGrGrGrDiGrDiDiDiDiDiDiDiDiDiDiDiGrGrGr
+GrGrDiGrGrGrGrGrGrGrGrGrGrGrGrGrGrFrFrFrFrFrFrFrFrGrGrGrGrGr
+GrGrGrGrGrGrGrGrDiGrGrGrGrGrGrGrDiGrDiDiDiGrDiGrGrGrGrGrGrGr
+GrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGr
+GrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrDiGrGrGrGrGr
+GrGrGrGrGrGrGrGrGrDiGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGr
+GrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGr
 """
 
-[tiles.gr]
+[tiles.Gr]
 name = "Grass"
 image = "grass"
 
-[tiles.di]
+[tiles.Di]
 name = "Dirt"
 image = "dirt"
 
-[tiles.fr]
+[tiles.Fr]
 name = "Field Ready"
 image = "field-ready"
 farmable = true
 
-[tiles.bd]
+[tiles.Bd]
 name = "Bad"
 image = "unknown"
 collidable = true
