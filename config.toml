@@ -7,3 +7,32 @@ keyframes = [
 	{ time = 0.5, rot = 190, bottom_padding = -10 },
 	{ time = 0.8, rot = 360, bottom_padding = 0 },
 ]
+
+tilemap = """\
+gr,gr,gr,gr,gr
+di,di,di,di,di
+gr,di,gr,di,gr
+di,gr,di,gr,di
+gr,gr,di,di,gr
+gr,gr,di,di,gr
+gr,gr,gr,gr,gr
+fr,fr,fr,fr,bd
+"""
+
+[tiles.gr]
+name = "Grass"
+image = "grass"
+
+[tiles.di]
+name = "Dirt"
+image = "dirt"
+
+[tiles.fr]
+name = "Field Ready"
+image = "field-ready"
+farmable = true
+
+[tiles.bd]
+name = "Bad"
+image = "unknown"
+collidable = true
