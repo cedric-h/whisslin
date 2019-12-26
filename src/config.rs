@@ -1,10 +1,29 @@
 use crate::phys::aiming::KeyFrame;
-use crate::tilemap::TileProperties;
 use crate::{na, Vec2};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt;
 use toml::value::Table;
+
+#[derive(Debug, Deserialize)]
+pub struct TileProperty {
+    pub name: String,
+    pub image: String,
+    #[serde(default)]
+    pub farmable: bool,
+    #[serde(default)]
+    pub collidable: bool
+}
+impl Default for TileProperty {
+    fn default() -> Self {
+        Self {
+            name: "unknown".into(),
+            image: "unknown".into(),
+            farmable: false,
+            collidable: false,
+        }
+    }
+}
 
 #[derive(Debug, Deserialize)]
 pub struct PlayerConfig {
@@ -28,7 +47,7 @@ impl Default for PlayerConfig {
 pub struct SerdeConfig {
     keyframes: Vec<Table>,
     player: PlayerConfig,
-    tiles: HashMap<String, TileProperties>,
+    tiles: HashMap<String, TileProperty>,
     tilemap: String,
 }
 
@@ -63,7 +82,7 @@ impl ReloadingHandlers {
 pub struct Config {
     pub keyframes: Vec<KeyFrame>,
     pub player: PlayerConfig,
-    pub tiles: HashMap<String, TileProperties>,
+    pub tiles: HashMap<String, TileProperty>,
     pub tilemap: String,
     // internal hot reloading stuff
     #[cfg(feature = "hot-config")]

@@ -6,36 +6,37 @@ keyframes = [
 ]
 
 tilemap = """\
-GrGrGrGrGr
-DiDiDiDiDi
-GrDiGrDiGr
-DiGrDiGrDi
-GrGrDiDiGr
-GrGrDiDiGr
-GrGrGrGrGr
-FrFrFrFrBd
+gr,gr,gr,gr,gr
+di,di,di,di,di
+gr,di,gr,di,gr
+di,gr,di,gr,di
+gr,gr,di,di,gr
+gr,gr,di,di,gr
+gr,gr,gr,gr,gr
+fr,fr,fr,fr,bd
 """
 
-[tiles.Gr]
+[tiles.gr]
 name = "Grass"
 image = "grass"
 
-[tiles.Di]
+[tiles.di]
 name = "Dirt"
 image = "dirt"
 
-[tiles.Fr]
+[tiles.fr]
 name = "Field Ready"
 image = "field-ready"
-flags = ["farmable"]
+farmable = true
 
-[tiles.Bd]
+[tiles.bd]
 name = "Bad"
 image = "unknown"
-flags = ["collidable"]
+collidable = true
 
 [player]
 speed = 0.1
 image = "creep"
 size = [0.7, 0.3]
 pos = [15.0, 8.5]
+

@@ -84,7 +84,7 @@ impl State for Game {
             ));
         }
         // Tilemap stuffs
-        tilemap::build_tile_entities(&config.tilemap, &config.tiles, &mut world);
+        tilemap::new_tilemap(&config.tilemap, &config.tiles, &mut world);
 
         world.spawn((
             graphics::Appearance {
