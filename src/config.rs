@@ -37,6 +37,7 @@ pub struct Config {
     pub keyframes: KeyFrames,
     pub player: PlayerConfig,
     pub tiles: HashMap<String, TileProperty>,
+    pub sprite_sheets: HashMap<String, crate::graphics::sprite_sheet::Entry>,
     pub tilemap: String,
 }
 
@@ -102,7 +103,7 @@ impl ConfigHandler {
         Ok(Self {
             config: Config::load()?,
             #[cfg(feature = "hot-config")]
-            reloading_handlers: Some(ReloadingHandlers::new()),
+            reloading_handlers: ReloadingHandlers::new(),
         })
     }
 
@@ -112,7 +113,7 @@ impl ConfigHandler {
         use notify::{Event, EventKind::Create};
         while let Ok(Ok(Event {
             kind: Create(_), ..
-        })) = self.reloading_handlers.as_ref().unwrap().notify.try_recv()
+        })) = self.reloading_handlers.notify.try_recv()
         {
             println!("Change detected, reloading config.toml file!");
             match Config::load() {
@@ -131,6 +132,11 @@ impl std::ops::Deref for ConfigHandler {
 
     fn deref(&self) -> &Self::Target {
         &self.config
+    }
+}
+impl std::ops::DerefMut for ConfigHandler {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.config
     }
 }
 

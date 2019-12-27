@@ -56,7 +56,8 @@ impl Inventory {
                 .get::<crate::graphics::Appearance>(e)
                 .expect("Can't add item without appearance!")
                 .kind
-                .name(),
+                .name()
+                .into(),
         ));
         self
     }
@@ -91,7 +92,7 @@ impl Inventory {
     pub fn insert(&mut self, ent: Entity, world: &World) -> Result<(), Error> {
         world
             .get::<crate::graphics::Appearance>(ent)
-            .map(|appearance| self.insert_raw(appearance.kind.name(), ent))
+            .map(|appearance| self.insert_raw(appearance.kind.name().into(), ent))
             .map_err(|_| Error::NoAppearance(ent))
     }
 

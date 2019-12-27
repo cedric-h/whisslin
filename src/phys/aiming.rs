@@ -28,6 +28,11 @@ impl std::ops::Deref for KeyFrames {
         &self.0
     }
 }
+impl std::ops::DerefMut for KeyFrames {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 #[derive(Debug)]
 pub enum KeyFrameParsingError {

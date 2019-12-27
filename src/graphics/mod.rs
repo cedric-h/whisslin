@@ -1,15 +1,16 @@
 #[allow(dead_code)]
 pub mod colors;
 pub mod images;
+pub mod sprite_sheet;
 use images::ImageMap;
 #[cfg(feature = "hitbox-outlines")]
 mod hitbox_outlines;
 
-use crate::{na, Iso2, Vec2, DIMENSIONS, TILE_SIZE};
+use crate::{config::Config, na, Iso2, Vec2, DIMENSIONS, TILE_SIZE};
 use hecs::World;
 use ncollide2d::shape::Cuboid;
 use quicksilver::{
-    geom::{Rectangle, Transform},
+    geom::{Rectangle, Transform, Vector},
     graphics::{
         Background::{Col, Img},
         Color, View,
@@ -64,10 +65,11 @@ impl AppearanceKind {
     }
 
     /// I needed this for some very cursed reasons (game/src/items/mod.rs)
-    pub fn name(&self) -> String {
+    /// then I used it for sprite sheets too, I'm going to hell
+    pub fn name(&self) -> &str {
         match &self {
-            AppearanceKind::Color { .. } => String::from("Color"),
-            AppearanceKind::Image { name, .. } => name.clone(),
+            AppearanceKind::Color { .. } => unreachable!(),
+            AppearanceKind::Image { name, .. } => &name,
         }
     }
 }
@@ -84,7 +86,7 @@ impl Default for Appearance {
         Self {
             kind: AppearanceKind::Color {
                 color: Color::RED,
-                rectangle: Rectangle::new_sized(quicksilver::geom::Vector::ONE * 128),
+                rectangle: Rectangle::new_sized(Vector::ONE * 128),
             },
             alignment: Alignment::default(),
             z_offset: 0.0,
@@ -93,14 +95,22 @@ impl Default for Appearance {
     }
 }
 
-pub fn render(window: &mut Window, world: &World, images: &mut ImageMap) -> Result<()> {
+pub fn render(
+    window: &mut Window,
+    world: &World,
+    images: &mut ImageMap,
+    cfg: &Config,
+) -> Result<()> {
     window.set_view(View::new(Rectangle::new_sized(DIMENSIONS / TILE_SIZE)));
     window.clear(colors::DISCORD)?;
 
     #[allow(unused_variables)]
-    for (_, (appearance, cuboid, iso)) in
-        &mut world.query::<(&Appearance, Option<&Cuboid<f32>>, &Iso2)>()
-    {
+    for (_, (appearance, cuboid, sheet_index, iso)) in &mut world.query::<(
+        &Appearance,
+        Option<&Cuboid<f32>>,
+        Option<&sprite_sheet::Index>,
+        &Iso2,
+    )>() {
         let rot = Transform::rotate(iso.rotation.angle().to_degrees());
         let loc = iso.translation.vector;
 
@@ -129,8 +139,21 @@ pub fn render(window: &mut Window, world: &World, images: &mut ImageMap) -> Resu
                 images
                     .get_mut(name)
                     .unwrap_or_else(|| panic!("Couldn't find an image with name: {}", name))
-                    .execute(|img| {
-                        let mut rect = img.area();
+                    .execute(|src| {
+                        let (img, mut rect) = if let (Some(entry), Some(index)) =
+                            (cfg.sprite_sheets.get(name), sheet_index)
+                        {
+                            (
+                                src.subimage(Rectangle::new(
+                                    entry.frame_size.component_mul(&index.0),
+                                    entry.frame_size,
+                                )),
+                                Rectangle::new_sized(entry.frame_size),
+                            )
+                        } else {
+                            (src.clone(), src.area())
+                        };
+
                         rect.size *= *scale / 16.0;
                         let offset = appearance.alignment.offset(&rect);
 
@@ -144,7 +167,7 @@ pub fn render(window: &mut Window, world: &World, images: &mut ImageMap) -> Resu
 
                         window.draw_ex(
                             &rect,
-                            Img(img),
+                            Img(&img),
                             transform,
                             loc.y + offset.y + appearance.z_offset,
                         );

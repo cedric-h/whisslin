@@ -1,8 +1,8 @@
 keyframes = [
-	{ time = 0.0, pos = [0, 0], rot = 25, bottom_padding = 0 },
-	{ time = 0.2, pos = [0.4, -0.5], rot = 45, bottom_padding = -1},
-	{ time = 0.5, rot = 190, bottom_padding = -10 },
-	{ time = 0.8, rot = 360, bottom_padding = 0 },
+	{ time = 0.0, pos = [0.2, -0.4], rot = 25, bottom_padding = 0 },
+
+	# default state config
+	{ pos = [0.2, -0.4], bottom_padding = 0.6 },
 ]
 
 tilemap = """\
@@ -48,4 +48,13 @@ speed = 0.1
 image = "creep"
 size = [0.7, 0.3]
 pos = [15.0, 8.5]
+
+[sprite_sheets.creep]
+frame_size = [24, 24]
+rows = 2
+cols = 1
+frame_millis = [
+	250,
+	250
+]
 

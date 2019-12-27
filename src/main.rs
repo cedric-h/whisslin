@@ -6,6 +6,7 @@ use quicksilver::{
     lifecycle::{run, Settings, State, Window},
     Result,
 };
+use std::time::Instant;
 
 type Vec2 = na::Vector2<f32>;
 type Iso2 = na::Isometry2<f32>;
@@ -25,18 +26,21 @@ mod graphics;
 use graphics::images::{fetch_images, ImageMap};
 
 struct Game {
+    last_render: Instant,
     world: World,
     images: ImageMap,
     config: ConfigHandler,
+    sprite_sheet_animation_failed: bool,
 }
 
 impl State for Game {
     fn new() -> Result<Game> {
-        let config = ConfigHandler::new().unwrap_or_else(|e| panic!("{}", e));
+        let mut config = ConfigHandler::new().unwrap_or_else(|e| panic!("{}", e));
         let images = fetch_images();
 
         let mut world = World::new();
 
+        let last_keyframe = config.keyframes.pop().unwrap();
         let spears: Vec<hecs::Entity> = (0..1000)
             .map(|_| {
                 world.spawn((
@@ -46,8 +50,8 @@ impl State for Game {
                         ..Default::default()
                     },
                     aiming::Weapon {
-                        bottom_padding: 0.5,
-                        offset: Vec2::y() * -0.5,
+                        bottom_padding: last_keyframe.bottom_padding,
+                        offset: last_keyframe.pos,
                         equip_time: 50,
                         speed: 3.0,
                         ..Default::default()
@@ -70,7 +74,10 @@ impl State for Game {
             items::Inventory::new_with(&spears[1..1000], &world)
                 .unwrap()
                 .with_equip(spears[0], &world),
+            graphics::sprite_sheet::Animation::new(),
+            graphics::sprite_sheet::Index::new(),
         ));
+
         for i in 0..4 {
             world.spawn((
                 graphics::Appearance {
@@ -82,29 +89,34 @@ impl State for Game {
                 Iso2::translation(8.0 + i as f32, 5.0),
             ));
         }
+
         // Tilemap stuffs
         tilemap::new_tilemap(&config.tilemap, &config.tiles, &mut world);
-
-        world.spawn((
-            graphics::Appearance {
-                kind: graphics::AppearanceKind::image("smol_fence"),
-                ..Default::default()
-            },
-            collision::CollisionStatic,
-            Cuboid::new(Vec2::new(1.0, 0.2)),
-            Iso2::translation(30.0, 17.0),
-        ));
 
         Ok(Game {
             world,
             images,
             config,
+            last_render: Instant::now(),
+            sprite_sheet_animation_failed: false,
         })
     }
 
     fn draw(&mut self, window: &mut Window) -> Result<()> {
-        graphics::render(window, &self.world, &mut self.images)?;
+        let now = Instant::now();
+        let elapsed = now.duration_since(self.last_render);
 
+        if !self.sprite_sheet_animation_failed {
+            graphics::sprite_sheet::animate(&mut self.world, &self.config, elapsed).unwrap_or_else(
+                |e| {
+                    println!("Disabling sprite sheet animation: {}", e);
+                    self.sprite_sheet_animation_failed = true;
+                },
+            );
+        }
+        graphics::render(window, &self.world, &mut self.images, &self.config)?;
+
+        self.last_render = now;
         Ok(())
     }
 
