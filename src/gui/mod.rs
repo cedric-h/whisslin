@@ -312,6 +312,32 @@ pub fn try_slot_insert<'a>(
     Some(())
 }
 
+fn try_swap_docking_ents(
+    left_ent: Entity,
+    right_ent: Entity,
+    ecs: &hecs::World,
+    l8r: &mut crate::L8r,
+) -> Option<()> {
+    let left_docking = *ecs.get::<Docking>(left_ent).ok()?;
+    let right_docking = *ecs.get::<Docking>(right_ent).ok()?;
+
+    {
+        let mut right_docking = ecs.get_mut::<Docking>(right_ent).ok()?;
+
+        *right_docking = left_docking;
+        right_docking.dock(right_ent, l8r);
+    }
+
+    {
+        let mut left_docking = ecs.get_mut::<Docking>(left_ent).ok()?;
+
+        *left_docking = right_docking;
+        right_docking.dock(left_ent, l8r);
+    }
+
+    Some(())
+}
+
 pub fn inventory_events(world: &mut World, images: &mut ImageMap) {
     let ecs = &world.ecs;
     let l8r = &mut world.l8r;
@@ -327,32 +353,18 @@ pub fn inventory_events(world: &mut World, images: &mut ImageMap) {
     for (_, (&items::InventoryEquip(equipped_type), inv_window)) in
         &mut ecs.query::<(&items::InventoryEquip, &mut InventoryWindow)>()
     {
-        (|| {
-            let new_equip_ent = dbg!(inv_window.find_item_slot(&ecs, equipped_type)?.0);
-            let old_equip_ent = dbg!(inv_window.equipped_slot);
+        // NOTE: this could bug out if you like equipped an item while dragging a slot
+        // around to drop it somewhere else? or not.
 
-            // NOTE: this could bug out if you like equipped an item while dragging a slot
-            // around to drop it somewhere else? or not.
-
-            let old_equip_docking = *ecs.get::<Docking>(old_equip_ent).ok()?;
-            let new_equip_docking = *ecs.get::<Docking>(new_equip_ent).ok()?;
-
-            {
-                let mut new_equip_docking = ecs.get_mut::<Docking>(new_equip_ent).ok()?;
-
-                *new_equip_docking = old_equip_docking;
-                new_equip_docking.dock(new_equip_ent, l8r);
-            }
-
-            {
-                let mut old_equip_docking = ecs.get_mut::<Docking>(old_equip_ent).ok()?;
-
-                *old_equip_docking = new_equip_docking;
-                old_equip_docking.dock(old_equip_ent, l8r);
-            }
-
-            Some(())
-        })();
+        try_swap_docking_ents(
+            match inv_window.find_item_slot(&ecs, equipped_type) {
+                Some((ent, _)) => ent,
+                None => continue,
+            },
+            inv_window.equipped_slot,
+            ecs,
+            l8r,
+        );
     }
 }
 
@@ -394,6 +406,7 @@ impl GuiState {
                     None
                 }
             })
+            .filter(|(ent, _)| self.dragging_ent.map(|drag| drag != *ent).unwrap_or(true))
             .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(e, _)| e)
     }
@@ -401,18 +414,21 @@ impl GuiState {
     pub fn update_draggable_under_mouse(
         &mut self,
         world: &mut World,
-        new_draggable: Option<Entity>,
+        draggable_under: Option<Entity>,
         mouse: &Mouse,
     ) {
+        let ecs = &world.ecs;
+        let l8r = &mut world.l8r;
+
         let mouse_down = mouse[MouseButton::Left].is_down();
 
-        let drag_me = self.dragging_ent.filter(|_| mouse_down).or(new_draggable);
+        let drag_me = self.dragging_ent.filter(|_| mouse_down).or(draggable_under);
 
         if let (true, Some(entity)) = (mouse_down, drag_me) {
             let mouse_pos = mouse.pos().into_vector();
 
             if let Some(last) = self.last_mouse_down_pos {
-                let mut iso = world.ecs.get_mut::<Iso2>(entity).unwrap();
+                let mut iso = ecs.get_mut::<Iso2>(entity).unwrap();
                 let offset = last - iso.translation.vector;
                 iso.translation.vector = mouse_pos - offset;
             }
@@ -421,10 +437,19 @@ impl GuiState {
         } else {
             // if they're releasing something they've been dragging,
             // we need to register an event for that so we can process it.
-            if let Some(entity) = self.dragging_ent {
-                if let Ok(docking) = world.ecs.get::<Docking>(entity) {
-                    docking.dock(entity, &mut world.l8r);
+            if let Some(released_ent) = self.dragging_ent {
+                // if the item slot was released over the void, we need to drop the items.
+                // if it was released over another item slot, we need to swap the slots.
+                // anything else just zips the item slot back home.
+                if let Some(under_ent) = draggable_under {
+                    if let Ok(item_slot) = ecs.get::<ItemSlot>(under_ent) {
+                        try_swap_docking_ents(under_ent, released_ent, ecs, l8r);
+                    } else if let Ok(docking) = ecs.get::<Docking>(released_ent) {
+                        // send it back home
+                        docking.dock(released_ent, l8r);
+                    }
                 }
+
                 self.dragging_ent = None;
             }
             self.last_mouse_down_pos = None;
