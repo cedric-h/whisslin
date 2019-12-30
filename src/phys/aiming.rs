@@ -1,7 +1,8 @@
+use super::Velocity;
 use crate::config::Config;
 use crate::items::Inventory;
+use crate::World;
 use crate::{na, Iso2, Vec2};
-use hecs::{Entity, World};
 use nalgebra::base::Unit;
 use nalgebra::geometry::UnitComplex;
 use quicksilver::input::MouseButton;
@@ -16,6 +17,14 @@ pub struct KeyFrame {
     pub pos: Vec2,
     pub rot: na::Unit<Vec2>,
     pub bottom_padding: f32,
+}
+impl KeyFrame {
+    fn into_iso2(self) -> Iso2 {
+        Iso2::from_parts(
+            na::Translation2::from(self.pos),
+            UnitComplex::rotation_between_axis(&Unit::new_unchecked(-Vec2::y()), &self.rot),
+        )
+    }
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -315,85 +324,51 @@ impl Weapon {
     }
 }
 
-enum QueuedAction {
-    LaunchWeapon(Entity, Vec2),
-    InsertIso(Entity, Iso2),
-}
-
 pub fn aiming(world: &mut World, window: &mut Window, cfg: &Config) {
-    let needs_velocity: Vec<QueuedAction> = world
-        .query::<(&Iso2, &mut Inventory, &mut Wielder)>()
+    // manually splitting the borrow to appease rustc
+    let ecs = &world.ecs;
+    let l8r = &mut world.l8r;
+
+    ecs.query::<(&Iso2, &mut Inventory, &mut Wielder)>()
         .into_iter()
         // updates the weapon's position relative to the wielder,
         // if clicking, queues adding velocity to the weapon and unequips it.
         // if the weapon that's been equipped doesn't have an iso, queue adding one
-        .filter_map(|(_, (wielder_iso, inv, wielder))| {
-            let wep_ent = inv.equipped()?;
-            let mut weapon = world.get_mut::<Weapon>(wep_ent).ok()?;
-            let mut appearance = world.get_mut::<crate::graphics::Appearance>(wep_ent).ok()?;
+        .for_each(|(_, (wielder_iso, inv, wielder))| {
+            // closure for early None return
+            (|| {
+                let wep_ent = inv.equipped()?;
+                let mut weapon = ecs.get_mut::<Weapon>(wep_ent).ok()?;
+                let mut appearance = ecs.get_mut::<crate::graphics::Appearance>(wep_ent).ok()?;
 
-            // physics temporaries
-            let mouse = window.mouse();
-            let delta = Unit::new_normalize(
-                (wielder_iso.translation.vector + weapon.offset) - mouse.pos().into_vector(),
-            );
-            wielder.advance_state(mouse[MouseButton::Left].is_down(), &weapon);
-            let mut frame = weapon.animation_frame(delta, wielder.state, &cfg.keyframes)?;
+                // physics temporaries
+                let mouse = window.mouse();
+                let delta = Unit::new_normalize(
+                    mouse.pos().into_vector() - (wielder_iso.translation.vector + weapon.offset),
+                );
 
-            // apply the bottom padding to the Appearance
-            appearance.alignment = crate::graphics::Alignment::Bottom(frame.bottom_padding);
+                wielder.advance_state(mouse[MouseButton::Left].is_down(), &weapon);
+                let frame = weapon.animation_frame(delta, wielder.state, &cfg.keyframes)?;
 
-            // get the final position by applying the offset to the world pos
-            frame.pos += wielder_iso.translation.vector;
+                // update world with new frame data
+                appearance.alignment = crate::graphics::Alignment::Bottom(frame.bottom_padding);
+                let mut frame_iso = frame.into_iso2();
+                frame_iso.translation.vector += wielder_iso.translation.vector;
 
-            // get the final rotation by converting it to a UnitComplex and adjusting
-            let rot =
-                UnitComplex::rotation_between_axis(&Unit::new_unchecked(Vec2::x()), &frame.rot)
-                    * UnitComplex::new(-std::f32::consts::FRAC_PI_2);
-            //* UnitComplex::rotation_between_axis(&Unit::new_unchecked(Vec2::x()), &delta);
+                // get and modify if possible or just insert the weapon's current position
+                let mut wep_iso = ecs
+                    .get_mut::<Iso2>(wep_ent)
+                    .map_err(|_| l8r.insert_one(wep_ent, frame_iso))
+                    .ok()?;
+                *wep_iso = frame_iso;
 
-            // get the weapon's current position if it has one,
-            // otherwise get one inserted onto it ASAP.
-            let mut wep_iso = match world.get_mut::<Iso2>(wep_ent) {
-                Ok(iso) => iso,
-                Err(_) => {
-                    let mut new_pos = *wielder_iso;
-                    new_pos.translation.vector = frame.pos;
-                    new_pos.rotation = rot;
-                    return Some(QueuedAction::InsertIso(wep_ent, new_pos));
+                // fire the spear if the wielder state indicates to do so!
+                if wielder.shooting() {
+                    inv.consume_equipped();
+                    l8r.insert_one(wep_ent, Velocity(delta.into_inner() * weapon.speed));
                 }
-            };
 
-            // applying translation and rotation provided by weapon_frame
-            wep_iso.translation.vector = frame.pos;
-            wep_iso.rotation = rot;
-
-            // queue launch if clicking
-            if wielder.shooting() {
-                inv.consume_equipped();
-                Some(QueuedAction::LaunchWeapon(
-                    wep_ent,
-                    delta.into_inner() * weapon.speed,
-                ))
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    needs_velocity.into_iter().for_each(|action| {
-        use QueuedAction::*;
-        match action {
-            LaunchWeapon(wep_ent, launch_towards) => {
-                world
-                    .insert_one(wep_ent, super::Velocity(-launch_towards))
-                    .expect("Couldn't insert velocity to launch weapon!");
-            }
-            InsertIso(wep_ent, wep_iso) => {
-                world
-                    .insert_one(wep_ent, wep_iso)
-                    .expect("Couldn't insert iso onto wep_ent!");
-            }
-        }
-    });
+                Some(())
+            })();
+        });
 }

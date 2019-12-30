@@ -1,7 +1,7 @@
 use super::Appearance;
 use crate::config::Config;
+use crate::World;
 use crate::{na, Vec2};
-use hecs::World;
 use std::time::Duration;
 
 #[derive(Debug, serde::Deserialize)]
@@ -59,8 +59,9 @@ impl Index {
 }
 
 pub fn animate(world: &mut World, cfg: &Config, elapsed: Duration) -> Result<(), Error> {
-    for (_, (anim, index, appearance)) in
-        &mut world.query::<(&mut Animation, &mut Index, &Appearance)>()
+    for (_, (anim, index, appearance)) in &mut world
+        .ecs
+        .query::<(&mut Animation, &mut Index, &Appearance)>()
     {
         let appearance_name = appearance.kind.name();
         let entry = cfg

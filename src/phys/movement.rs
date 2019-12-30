@@ -1,6 +1,6 @@
 use crate::graphics::Appearance;
 use crate::Iso2;
-use hecs::World;
+use crate::World;
 use quicksilver::{geom::Vector, input::Key, lifecycle::Window};
 
 pub struct PlayerControlled {
@@ -29,11 +29,12 @@ pub fn movement(world: &mut World, window: &mut Window) {
 
     if move_vec.len2() > 0.0 {
         for (_, (iso, &PlayerControlled { speed }, appearance)) in world
+            .ecs
             .query::<(&mut Iso2, &PlayerControlled, &mut Appearance)>()
             .iter()
         {
             iso.translation.vector += move_vec.into_vector() * speed;
-            appearance.flip_x = move_vec.x > 0.0;
+            appearance.flip_x = move_vec.x < 0.0;
         }
     }
 }

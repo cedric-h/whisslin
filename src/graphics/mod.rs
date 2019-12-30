@@ -6,19 +6,23 @@ use images::ImageMap;
 #[cfg(feature = "hitbox-outlines")]
 mod hitbox_outlines;
 
-use crate::{config::Config, na, Iso2, Vec2, DIMENSIONS, TILE_SIZE};
-use hecs::World;
+use crate::config::Config;
+use crate::World;
+use crate::{na, Iso2, Vec2};
+use crate::{DIMENSIONS, TILE_SIZE};
+use hecs::Entity;
 use ncollide2d::shape::Cuboid;
 use quicksilver::{
     geom::{Rectangle, Transform, Vector},
     graphics::{
         Background::{Col, Img},
-        Color, View,
+        Color, Font, FontStyle, Image, View,
     },
-    lifecycle::Window,
+    lifecycle::{Asset, Window},
     Result,
 };
 
+#[derive(Debug)]
 pub enum Alignment {
     /// The center of the hitbox is the center of the sprite
     #[allow(dead_code)]
@@ -29,6 +33,9 @@ pub enum Alignment {
     /// Centered.
     /// The value supplied is the offset from the bottom.
     Bottom(f32),
+    TopLeft,
+    /// Some other entity's position + some other arbitrary alignment.
+    Relative(Entity, Box<Alignment>),
 }
 impl Default for Alignment {
     fn default() -> Self {
@@ -36,10 +43,54 @@ impl Default for Alignment {
     }
 }
 impl Alignment {
-    pub fn offset(&self, rect: &Rectangle) -> Vec2 {
+    pub fn relative(entity: Entity, alignment: Alignment) -> Self {
+        Alignment::Relative(entity, Box::new(alignment))
+    }
+
+    fn parent_location(&self, world: &World) -> Option<Vec2> {
+        if let Alignment::Relative(ent, _) = self {
+            let mut parent_location = world
+                .ecs
+                .get::<Iso2>(*ent)
+                .unwrap_or_else(|_| {
+                    panic!(
+                        concat!(
+                            "Relative positioning requested for Entity[{:?}], ",
+                            "but no Iso2 component could be found for it."
+                        ),
+                        ent
+                    )
+                })
+                .translation
+                .vector;
+
+            if let Ok(parent_appearance) = world.ecs.get::<Appearance>(*ent) {
+                if let Some(location) = parent_appearance.alignment.parent_location(world) {
+                    parent_location += location;
+                }
+            }
+
+            Some(parent_location)
+        } else {
+            None
+        }
+    }
+
+    pub fn offset(&self, rect: &Rectangle, world: &World) -> Vec2 {
         -1.0 * match &self {
             Alignment::Center => na::zero(),
             Alignment::Bottom(offset) => Vec2::new(0.0, rect.size.y / 2.0 + offset),
+            Alignment::TopLeft => (rect.size / -2.0).into_vector(),
+            Alignment::Relative(_, alignment) => {
+                let mut offset = alignment.offset(rect, world);
+
+                if let Some(location) = self.parent_location(world) {
+                    // TODO: actually look up the rect
+                    offset += location;
+                }
+
+                -1.0 * offset
+            }
         }
     }
 }
@@ -55,6 +106,10 @@ pub enum AppearanceKind {
         name: String,
         scale: f32,
     },
+    Text {
+        text: String,
+        style: FontStyle,
+    },
 }
 impl AppearanceKind {
     pub fn image<S: Into<String>>(name: S) -> Self {
@@ -68,8 +123,8 @@ impl AppearanceKind {
     /// then I used it for sprite sheets too, I'm going to hell
     pub fn name(&self) -> &str {
         match &self {
-            AppearanceKind::Color { .. } => unreachable!(),
             AppearanceKind::Image { name, .. } => &name,
+            _ => unreachable!(),
         }
     }
 }
@@ -99,13 +154,14 @@ pub fn render(
     window: &mut Window,
     world: &World,
     images: &mut ImageMap,
+    font: &mut Asset<Font>,
     cfg: &Config,
 ) -> Result<()> {
     window.set_view(View::new(Rectangle::new_sized(DIMENSIONS / TILE_SIZE)));
     window.clear(colors::DISCORD)?;
 
     #[allow(unused_variables)]
-    for (_, (appearance, cuboid, sheet_index, iso)) in &mut world.query::<(
+    for (_, (appearance, cuboid, sheet_index, iso)) in &mut world.ecs.query::<(
         &Appearance,
         Option<&Cuboid<f32>>,
         Option<&sprite_sheet::Index>,
@@ -119,7 +175,7 @@ pub fn render(
                 color,
                 rectangle: rect,
             } => {
-                let offset = appearance.alignment.offset(rect);
+                let offset = appearance.alignment.offset(rect, world);
 
                 let mut transform = Transform::translate(loc - (rect.size / 2.0).into_vector())
                     * rot
@@ -135,44 +191,57 @@ pub fn render(
                     loc.y + offset.y + appearance.z_offset,
                 );
             }
-            AppearanceKind::Image { name, scale } => {
-                images
-                    .get_mut(name)
-                    .unwrap_or_else(|| panic!("Couldn't find an image with name: {}", name))
-                    .execute(|src| {
-                        let (img, mut rect) = if let (Some(entry), Some(index)) =
-                            (cfg.sprite_sheets.get(name), sheet_index)
-                        {
-                            (
-                                src.subimage(Rectangle::new(
-                                    entry.frame_size.component_mul(&index.0),
-                                    entry.frame_size,
-                                )),
-                                Rectangle::new_sized(entry.frame_size),
-                            )
-                        } else {
-                            (src.clone(), src.area())
-                        };
+            other => {
+                let mut execute = |img: &Image, mut rect: Rectangle, scale: f32| {
+                    rect.size *= scale / 16.0;
+                    let offset = appearance.alignment.offset(&rect, world);
 
-                        rect.size *= *scale / 16.0;
-                        let offset = appearance.alignment.offset(&rect);
+                    let mut transform = Transform::translate(loc - (rect.size / 2.0).into_vector())
+                        * rot
+                        * Transform::translate(offset);
+                    if appearance.flip_x {
+                        transform = transform * Transform::scale((-1, 1));
+                    }
 
-                        let mut transform =
-                            Transform::translate(loc - (rect.size / 2.0).into_vector())
-                                * rot
-                                * Transform::translate(offset);
-                        if appearance.flip_x {
-                            transform = transform * Transform::scale((-1, 1));
-                        }
+                    window.draw_ex(
+                        &rect,
+                        Img(&img),
+                        transform,
+                        loc.y + offset.y + appearance.z_offset,
+                    );
 
-                        window.draw_ex(
-                            &rect,
-                            Img(&img),
-                            transform,
-                            loc.y + offset.y + appearance.z_offset,
-                        );
-                        Ok(())
-                    })?;
+                    Ok(())
+                };
+                match other {
+                    AppearanceKind::Image { name, scale } => {
+                        images
+                            .get_mut(name)
+                            .unwrap_or_else(|| panic!("Couldn't find an image with name: {}", name))
+                            .execute(|src| {
+                                let (img, rect) = if let (Some(entry), Some(index)) =
+                                    (cfg.sprite_sheets.get(name), sheet_index)
+                                {
+                                    (
+                                        src.subimage(Rectangle::new(
+                                            entry.frame_size.component_mul(&index.0),
+                                            entry.frame_size,
+                                        )),
+                                        Rectangle::new_sized(entry.frame_size),
+                                    )
+                                } else {
+                                    (src.clone(), src.area())
+                                };
+                                execute(&img, rect, *scale)
+                            })?;
+                    }
+                    AppearanceKind::Text { text, style } => {
+                        font.execute(|font| {
+                            let img = font.render(text.as_str(), &style)?;
+                            execute(&img, img.area(), 1.0)
+                        })?;
+                    }
+                    _ => unreachable!(),
+                }
             }
         }
 
@@ -185,7 +254,7 @@ pub fn render(
     }
 
     #[cfg(feature = "hitbox-outlines")]
-    for (_, (cuboid, iso)) in &mut world.query::<(&Cuboid<f32>, &Iso2)>() {
+    for (_, (cuboid, iso)) in &mut world.ecs.query::<(&Cuboid<f32>, &Iso2)>() {
         hitbox_outlines::debug_lines(window, cuboid, iso, 0.18);
     }
 

@@ -1,8 +1,9 @@
 use crate::config::TileProperty;
 use crate::farm::Farmable;
 use crate::phys::collision;
+use crate::World;
 use crate::{graphics, Iso2, Vec2};
-use hecs::{EntityBuilder, World};
+use hecs::EntityBuilder;
 use ncollide2d::shape::Cuboid;
 use std::collections::HashMap;
 
@@ -37,7 +38,7 @@ pub fn new_tilemap(tilemap: &str, tile_prop: &HashMap<String, TileProperty>, wor
                         .add(Cuboid::new(Vec2::repeat(0.5)));
                 }
 
-                world.spawn(tile_builder.build());
+                world.ecs.spawn(tile_builder.build());
             })
     })
 }
