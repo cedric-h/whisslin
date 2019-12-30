@@ -1,8 +1,5 @@
-use crate::graphics;
-use crate::graphics::colors;
-use crate::graphics::images::ImageMap;
-use crate::phys::DragTowards;
 use crate::World;
+use crate::{graphics, items, phys};
 use crate::{Iso2, Vec2};
 use hecs::Entity;
 use quicksilver::geom::{Rectangle, Vector};
@@ -23,7 +20,7 @@ impl Docking {
 
     /// Starts sending an entity back towards their home location at the end of the next frame.
     fn dock(&self, docking_ent: Entity, l8r: &mut crate::L8r) {
-        l8r.insert_one(docking_ent, DragTowards::new(self.home, self.speed));
+        l8r.insert_one(docking_ent, phys::DragTowards::new(self.home, self.speed));
     }
 }
 
@@ -37,11 +34,13 @@ struct ItemSlot {
     /// The Entity for the text that indicates how many items are held in this slot.
     /// This Entity should have a Counter component.
     counter_ent: Entity,
+    /// The InventoryWindow that owns this ItemSlot
+    parent: Entity,
 }
 
 type EntityAndSlot<'a> = (Entity, hecs::Ref<'a, ItemSlot>);
 
-/// This component goes on the Entity which has the real crate::items::Inventory component,
+/// This component goes on the Entity which has the real items::Inventory component,
 /// and helps update its GUI when Inventory events happen.
 pub struct InventoryWindow {
     /// The Entity of the main GUI window, all of the slots are positioned relative to it.
@@ -119,7 +118,7 @@ impl Counter {
         graphics::Appearance {
             kind: graphics::AppearanceKind::Text {
                 text: self.0.to_string(),
-                style: quicksilver::graphics::FontStyle::new(20.0, colors::DISCORD),
+                style: quicksilver::graphics::FontStyle::new(20.0, graphics::colors::DISCORD),
             },
             alignment: graphics::Alignment::relative(parent, graphics::Alignment::Center),
             z_offset: 130.0,
@@ -131,7 +130,7 @@ impl Counter {
 fn slot_icon_graphics_appearance(
     slot_ent: Entity,
     item_name: &str,
-    images: &mut ImageMap,
+    images: &mut graphics::images::ImageMap,
 ) -> graphics::Appearance {
     // make an icon for the slot
     let scale = {
@@ -158,7 +157,7 @@ fn slot_icon_graphics_appearance(
     }
 }
 
-pub fn build_inventory_gui_entities(world: &mut World) -> InventoryWindow {
+pub fn build_inventory_gui_entities(world: &mut World, parent: Entity) -> InventoryWindow {
     let ecs = &mut world.ecs;
 
     let window = ecs.spawn((
@@ -166,7 +165,7 @@ pub fn build_inventory_gui_entities(world: &mut World) -> InventoryWindow {
         Iso2::translation(19.0, 1.0),
         graphics::Appearance {
             kind: graphics::AppearanceKind::Color {
-                color: colors::DISCORD,
+                color: graphics::colors::DISCORD,
                 rectangle: Rectangle::new_sized((10, 6)),
             },
             alignment: graphics::Alignment::TopLeft,
@@ -181,7 +180,7 @@ pub fn build_inventory_gui_entities(world: &mut World) -> InventoryWindow {
             Iso2::translation(x, y - (0.125 / 2.0)),
             graphics::Appearance {
                 kind: graphics::AppearanceKind::Color {
-                    color: colors::LIGHT_SLATE_GRAY,
+                    color: graphics::colors::LIGHT_SLATE_GRAY,
                     rectangle: Rectangle::new_sized((9, 0.125)),
                 },
                 alignment: graphics::Alignment::relative(window, graphics::Alignment::TopLeft),
@@ -199,11 +198,12 @@ pub fn build_inventory_gui_entities(world: &mut World) -> InventoryWindow {
                 item_name: None,
                 icon_ent,
                 counter_ent,
+                parent,
             },
             Draggable,
             graphics::Appearance {
                 kind: graphics::AppearanceKind::Color {
-                    color: colors::LIGHT_SLATE_GRAY,
+                    color: graphics::colors::LIGHT_SLATE_GRAY,
                     rectangle: Rectangle::new_sized((2, 1)),
                 },
                 alignment: graphics::Alignment::relative(window, graphics::Alignment::TopLeft),
@@ -265,7 +265,7 @@ pub fn try_slot_insert<'a>(
     item_name: &str,
     ecs: &hecs::World,
     l8r: &mut crate::L8r,
-    images: &mut ImageMap,
+    images: &mut graphics::images::ImageMap,
 ) -> Option<()> {
     // early return because it's perfectly fine for an Inventory not to have an InventoryWindow,
     // but we only want to update the InventoryWindow if it does have one.
@@ -338,13 +338,12 @@ fn try_swap_docking_ents(
     Some(())
 }
 
-pub fn inventory_events(world: &mut World, images: &mut ImageMap) {
+pub fn inventory_events(world: &mut World, images: &mut graphics::images::ImageMap) {
     let ecs = &world.ecs;
     let l8r = &mut world.l8r;
 
-    use crate::items;
     for (_, (items::InventoryInsert(inv_ent), item_appearance)) in
-        &mut ecs.query::<(&items::InventoryInsert, &crate::graphics::Appearance)>()
+        &mut ecs.query::<(&items::InventoryInsert, &graphics::Appearance)>()
     {
         try_slot_insert(*inv_ent, item_appearance.kind.name(), ecs, l8r, images);
     }
@@ -357,7 +356,7 @@ pub fn inventory_events(world: &mut World, images: &mut ImageMap) {
         // around to drop it somewhere else? or not.
 
         try_swap_docking_ents(
-            match inv_window.find_item_slot(&ecs, equipped_type) {
+            match equipped_type.and_then(|t| inv_window.find_item_slot(&ecs, t)) {
                 Some((ent, _)) => ent,
                 None => continue,
             },
@@ -435,24 +434,74 @@ impl GuiState {
             self.last_mouse_down_pos = Some(mouse_pos);
             self.dragging_ent = Some(entity);
         } else {
-            // if they're releasing something they've been dragging,
-            // we need to register an event for that so we can process it.
-            if let Some(released_ent) = self.dragging_ent {
-                // if the item slot was released over the void, we need to drop the items.
-                // if it was released over another item slot, we need to swap the slots.
-                // anything else just zips the item slot back home.
-                if let Some(under_ent) = draggable_under {
-                    if let Ok(item_slot) = ecs.get::<ItemSlot>(under_ent) {
-                        try_swap_docking_ents(under_ent, released_ent, ecs, l8r);
-                    } else if let Ok(docking) = ecs.get::<Docking>(released_ent) {
-                        // send it back home
-                        docking.dock(released_ent, l8r);
-                    }
-                }
+            // if they're releasing what they've been dragging over another entity,
+            if let (Some(released_ent), Some(under_ent)) = (self.dragging_ent, draggable_under) {
+                Self::handle_drag_drop(under_ent, released_ent, ecs, l8r);
 
                 self.dragging_ent = None;
             }
+            // if there isn't a second ent that we're dropping on top of, however,
+            else if let Some(released_ent) = self.dragging_ent {
+            }
             self.last_mouse_down_pos = None;
         };
+    }
+
+    fn handle_drag_drop(
+        // the entity that is under what was being dragged, the ent in the "drop zone"
+        drop_ent: Entity,
+        // the entity that was being dragged and is now being released over something else.
+        drag_ent: Entity,
+        ecs: &hecs::World,
+        l8r: &mut crate::L8r,
+    ) -> Option<()> {
+        // if the item slot was released over the void, we need to drop the items.
+        // if it was released over another item slot, we need to swap the slots.
+        // anything else just zips the item slot back home.
+
+        // returns the entity of the a given's slot parent if the slot is equipped on that window
+        let equipped_on_parent = |ent, slot: hecs::Ref<ItemSlot>| -> Option<Entity> {
+            let parent = slot.parent;
+
+            let parent_inventory = ecs.get::<items::Inventory>(parent).unwrap_or_else(|_| {
+                panic!(
+                    "ItemSlot[{:?}]'s parent[{:?}] has no inventory!",
+                    ent, slot.parent
+                )
+            });
+
+            slot.item_name.as_ref().and_then(move |slot_item_name| {
+                parent_inventory
+                    .equipped
+                    .as_ref()
+                    .filter(|(_, equipped_item_name)| slot_item_name == equipped_item_name)
+                    .map(|_| parent)
+            })
+        };
+
+        // swapping item slots is easy enough, although it's slightly more complicated if either
+        // slot is the "equipped slot" of that inventory
+        if let (Ok(drop_slot), Ok(drag_slot)) =
+            (ecs.get::<ItemSlot>(drop_ent), ecs.get::<ItemSlot>(drag_ent))
+        {
+            // if either of the slots being swapped are equipped slots,
+            // we need to launch an event to swap them.
+            let drop_parent_equipped = equipped_on_parent(drop_ent, drop_slot);
+            let drag_parent_equipped = equipped_on_parent(drag_ent, drag_slot);
+            if let Some(equipped_ent) = drop_parent_equipped.or(drag_parent_equipped) {
+            }
+            //Otherwise, swapping between two loose slots is purely aesthetic and we can schedule that right now.
+            else {
+                try_swap_docking_ents(drop_ent, drag_ent, ecs, l8r);
+            }
+        }
+        // if they were dropped on top of some other gui element, but that gui element isn't
+        // an ItemSlot, we can just send the draggable back home.
+        else if let Ok(docking) = ecs.get::<Docking>(drag_ent) {
+            // send it back home
+            docking.dock(drag_ent, l8r);
+        }
+
+        Some(())
     }
 }

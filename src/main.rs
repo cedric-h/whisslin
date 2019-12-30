@@ -107,7 +107,7 @@ impl State for Game {
             },
             aiming::Wielder::new(),
             items::Inventory::new(),
-            items::InventoryEquip("spear"),
+            items::InventoryEquip(Some("spear")),
             graphics::sprite_sheet::Animation::new(),
             graphics::sprite_sheet::Index::new(),
         ));
@@ -146,7 +146,7 @@ impl State for Game {
         tilemap::new_tilemap(&config.tilemap, &config.tiles, &mut world);
 
         // attach the inventory GUI window to the player
-        let window = gui::build_inventory_gui_entities(&mut world);
+        let window = gui::build_inventory_gui_entities(&mut world, player);
         world.ecs.insert_one(player, window).unwrap();
 
         Ok(Game {

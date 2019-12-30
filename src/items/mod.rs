@@ -21,7 +21,7 @@ pub struct InventoryInsert(pub Entity);
 /// so inserting this component using l8r still works.
 ///
 /// As soon as it's processed, this component is removed from the entity it affected.
-pub struct InventoryEquip<'name>(pub &'name str);
+pub struct InventoryEquip<'name>(pub Option<&'name str>);
 
 /// NOTE: this function is designed to be run after l8r.now(), but it also
 /// runs its own l8r.now() at the end of its execution so as to run some
@@ -60,23 +60,53 @@ pub fn inventory_inserts(world: &mut World) {
         l8r.remove_one::<InventoryInsert>(item_ent);
     }
 
-    for (item_ent, (&InventoryEquip(item_name), inventory)) in
+    for (inv_ent, (&InventoryEquip(to_equip), inventory)) in
         &mut ecs.query::<(&InventoryEquip, &mut Inventory)>()
     {
-        let top_item_ent = inventory
-            .slots
-            .get_mut(item_name)
-            .and_then(|items| items.pop())
-            .unwrap_or_else(|| {
-                panic!(
-                    "Attempted to equip {} for Inventory[{:?}] but no items of that type!",
-                    item_name, item_ent
-                )
-            });
+        // equipping a type of item with a certain name involves
+        // finding that item in the slots map, pulling an entity
+        // from the map, and stashing that in inventory.equipped
+        if let Some(item_name) = to_equip {
+            let top_item_ent = inventory
+                .slots
+                .get_mut(item_name)
+                .and_then(|items| items.pop())
+                .unwrap_or_else(|| {
+                    panic!(
+                        "Attempted to equip {} for Inventory[{:?}] but no items of that type!",
+                        item_name, inv_ent
+                    )
+                });
 
-        inventory.equipped = Some((top_item_ent, item_name.to_string()));
+            inventory.equipped = Some((top_item_ent, item_name.to_string()));
+        }
+        // if we're equipping nothing, however, we take our equipped item, we put
+        // it *back* in our slot for it, and then we record the lack of an equipped item.
+        else {
+            if let Some((equipped_ent, item_name)) = inventory.equipped {
+                inventory
+                    .slots
+                    .get_mut(&item_name)
+                    .unwrap_or_else(|| {
+                        panic!(
+                            concat!(
+                                "Attempting to insert equipped[{:?}] back into its slot of items[{:?}], ",
+                                "but no such slot could be found in Inventory[{:?}]!"
+                            ),
+                            equipped_ent,
+                            item_name,
+                            inv_ent
+                        )
+                    })
+                    .push(equipped_ent);
 
-        l8r.remove_one::<InventoryEquip>(item_ent);
+                inventory.equipped = None;
+            }
+            // the "else" in this case is, nothing was equipped, and now we're equipping nothing.
+            // I think in that case we just don't do anything.
+        }
+
+        l8r.remove_one::<InventoryEquip>(inv_ent);
     }
 
     let scheduled_world_edits = world.l8r.drain();
@@ -93,7 +123,7 @@ pub struct Inventory {
     slots: HashMap<String, Vec<Entity>>,
 
     // the type of the equipped thing is also stored
-    equipped: Option<(Entity, String)>,
+    pub equipped: Option<(Entity, String)>,
 }
 
 impl Inventory {
