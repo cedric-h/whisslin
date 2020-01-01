@@ -3,12 +3,25 @@ use hecs::Entity;
 use std::collections::HashMap;
 
 /// Entities with this component get inserted into the Inventory
-/// component of the given Entity at the end of each frame.
+/// component of the given Entity at the end of the next frame.
+///
 /// Similar to InventoryEquip, this happens after l8r.now(),
 /// so inserting this component using l8r still works.
 ///
 /// As soon as it's processed, this component is removed from the entity it affected.
 pub struct InventoryInsert(pub Entity);
+
+/// Entities with this component have their equipped item deleted and another of the same type
+/// equipped take its place (if one is available) at the end of the next frame.
+///
+/// # Panics
+/// Panics if the inventory entity this is associated with has nothing equipped.
+///
+/// Similar to InventoryEquip, this happens after l8r.now(),
+/// so inserting this component using l8r still works.
+///
+/// As soon as it's processed, this component is removed from the entity it affected.
+pub struct InventoryConsumeEquipped;
 
 /// Switch the Inventory component of the entity this component is
 /// associated with over to the given type of item at the end of the
@@ -21,7 +34,7 @@ pub struct InventoryInsert(pub Entity);
 /// so inserting this component using l8r still works.
 ///
 /// As soon as it's processed, this component is removed from the entity it affected.
-pub struct InventoryEquip<'name>(pub Option<&'name str>);
+pub struct InventoryEquip(pub Option<String>);
 
 /// NOTE: this function is designed to be run after l8r.now(), but it also
 /// runs its own l8r.now() at the end of its execution so as to run some
@@ -41,72 +54,47 @@ pub fn inventory_inserts(world: &mut World) {
             )
         });
 
-        // now that it's becoming an item, we don't want it to have a position.
-        // Removing the position ensures that it's not rendered or collided with
-        // or any of that other icky stuff.
-        l8r.remove_one::<Iso2>(item_ent);
-
-        /*
-        println!(
-            "inserting item {:?} named {} on {:?}",
-            item_ent,
-            item_appearance.kind.name(),
-            inv_ent
-        );*/
-
-        inventory.insert(item_appearance.kind.name().to_string(), item_ent);
+        inventory.insert(item_appearance.kind.name().to_string(), item_ent, l8r);
 
         // this component is basically an event, it happens once then we can get rid of it.
         l8r.remove_one::<InventoryInsert>(item_ent);
     }
 
-    for (inv_ent, (&InventoryEquip(to_equip), inventory)) in
-        &mut ecs.query::<(&InventoryEquip, &mut Inventory)>()
-    {
-        // equipping a type of item with a certain name involves
-        // finding that item in the slots map, pulling an entity
-        // from the map, and stashing that in inventory.equipped
-        if let Some(item_name) = to_equip {
-            let top_item_ent = inventory
-                .slots
-                .get_mut(item_name)
-                .and_then(|items| items.pop())
-                .unwrap_or_else(|| {
-                    panic!(
-                        "Attempted to equip {} for Inventory[{:?}] but no items of that type!",
-                        item_name, inv_ent
-                    )
-                });
+    // TODO: find some way to abuse L8r to keep (ConsumeEquipped/Equip)s in order and to allow
+    // multiples of them.
 
+    for (inv_ent, (inv_equip, inventory)) in &mut ecs.query::<(&InventoryEquip, &mut Inventory)>() {
+        let item_name_to_equip = inv_equip.0.as_ref();
+
+        // if there's something equipped right now we want to throw it back in the stack for the
+        // type of item it is.
+        if let Some((equipped_ent, item_name)) = inventory.equipped.take() {
+            println!("deequipping {:?}", &item_name);
+            inventory.insert(item_name, equipped_ent, l8r);
+        }
+
+        // handling equipping whatever new thing we're supposed to equip
+        if let Some(item_name) = item_name_to_equip {
+            let top_item_ent = inventory.equip_named(item_name).unwrap_or_else(|| {
+                panic!(
+                    "Attempted to equip {} for Inventory[{:?}] but no items of that type!",
+                    item_name, inv_ent
+                )
+            });
+
+            println!("equipping {:?}", item_name);
             inventory.equipped = Some((top_item_ent, item_name.to_string()));
         }
         // if we're equipping nothing, however, we take our equipped item, we put
         // it *back* in our slot for it, and then we record the lack of an equipped item.
-        else {
-            if let Some((equipped_ent, item_name)) = inventory.equipped {
-                inventory
-                    .slots
-                    .get_mut(&item_name)
-                    .unwrap_or_else(|| {
-                        panic!(
-                            concat!(
-                                "Attempting to insert equipped[{:?}] back into its slot of items[{:?}], ",
-                                "but no such slot could be found in Inventory[{:?}]!"
-                            ),
-                            equipped_ent,
-                            item_name,
-                            inv_ent
-                        )
-                    })
-                    .push(equipped_ent);
-
-                inventory.equipped = None;
-            }
-            // the "else" in this case is, nothing was equipped, and now we're equipping nothing.
-            // I think in that case we just don't do anything.
-        }
 
         l8r.remove_one::<InventoryEquip>(inv_ent);
+    }
+
+    for (inv_ent, (_, inventory)) in &mut ecs.query::<(&InventoryConsumeEquipped, &mut Inventory)>()
+    {
+        inventory.consume_equipped();
+        l8r.remove_one::<InventoryConsumeEquipped>(inv_ent);
     }
 
     let scheduled_world_edits = world.l8r.drain();
@@ -131,67 +119,51 @@ impl Inventory {
         Self::default()
     }
 
-    /*
-    pub fn new_with(items: &[Entity], world: &World) -> Result<Self, Error> {
-        let mut s = Self::new();
-
-        for item in items.iter() {
-            s.insert(*item, world)?;
-        }
-
-        Ok(s)
-    }*/
-
-    /*
-    pub fn with_equip(mut self, e: Entity, world: &World) -> Self {
-        self.equipped = Some((
-            e,
-            world
-                .get::<crate::graphics::Appearance>(e)
-                .expect("Can't add item without appearance!")
-                .kind
-                .name()
-                .into(),
-        ));
-        self
-    }*/
-
-    /*
-    pub fn equip(&mut self, e: Entity) {
-        self.equipped = Some(e);
-    }*/
-
-    pub fn equipped(&self) -> Option<Entity> {
+    pub fn equipped_ent(&self) -> Option<Entity> {
         self.equipped.as_ref().map(|(e, _)| *e)
     }
 
-    /// Deequips the equipped item, but equips another item
-    /// of the same type to take its place, if one is available.
-    ///
-    /// # Panics
-    /// Panics if there is no equipped.
-    pub fn consume_equipped(&mut self) {
-        let eq = self
+    /// Returns:
+    /// an Option that contains the equipped entity if there was one to equip.
+    fn consume_equipped(&mut self) -> Option<Entity> {
+        let (_, equipped_item_name) = self
             .equipped
-            .as_ref()
-            .expect("Can't consume equipped; doesn't exist!");
-        self.equipped = self
-            .slots
-            .get_mut(&eq.1)
-            .filter(|items| !items.is_empty())
-            .map(|items| (items.remove(0), eq.1.clone()));
+            .take()
+            .expect("Can't consume equipped; nothing's equipped!");
+
+        self.equip_named(equipped_item_name)
     }
 
-    /*
-    /// Gets the appearance to use for HashMap indexing
-    pub fn insert(&mut self, ent: Entity, world: &World) -> Result<(), Error> {
-        world
-            .get::<crate::graphics::Appearance>(ent)
-            .map(|appearance| self.insert_raw(appearance.kind.name().into(), ent))
-            .map_err(|_| Error::NoAppearance(ent))
-    }*/
+    /// Finds the stack of items with this name, pops one off of the top and equips it.
+    fn equip_named<S: Into<String>>(&mut self, name: S) -> Option<Entity> {
+        let name = name.into();
 
-    fn insert(&mut self, key: String, val: hecs::Entity) {
-        self.slots.entry(key).or_insert(vec![]).push(val);
+        let popped = self
+            .slots
+            .get_mut(&name)
+            .filter(|items| !items.is_empty())?
+            .pop()
+            // probably safe because we just checked to see if it was empty
+            .unwrap();
+        self.equipped = Some((popped, name));
+
+        Some(popped)
+    }
+
+    fn insert(&mut self, item_name: String, item_ent: hecs::Entity, l8r: &mut crate::L8r) {
+        // now that it's becoming an item, we don't want it to have a position.
+        // Removing the position ensures that it's not rendered or collided with
+        // or any of that other icky stuff.
+        l8r.remove_one::<Iso2>(item_ent);
+
+        /*
+        println!(
+            "inserting item {:?} named {} on {:?}",
+            item_ent,
+            item_name,
+            inv_ent
+        );*/
+
+        self.slots.entry(item_name).or_insert(vec![]).push(item_ent);
     }
 }

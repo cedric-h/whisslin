@@ -334,10 +334,10 @@ pub fn aiming(world: &mut World, window: &mut Window, cfg: &Config) {
         // updates the weapon's position relative to the wielder,
         // if clicking, queues adding velocity to the weapon and unequips it.
         // if the weapon that's been equipped doesn't have an iso, queue adding one
-        .for_each(|(_, (wielder_iso, inv, wielder))| {
+        .for_each(|(wielder_ent, (wielder_iso, inv, wielder))| {
             // closure for early None return
             (|| {
-                let wep_ent = inv.equipped()?;
+                let wep_ent = inv.equipped_ent()?;
                 let mut weapon = ecs.get_mut::<Weapon>(wep_ent).ok()?;
                 let mut appearance = ecs.get_mut::<crate::graphics::Appearance>(wep_ent).ok()?;
 
@@ -364,7 +364,7 @@ pub fn aiming(world: &mut World, window: &mut Window, cfg: &Config) {
 
                 // fire the spear if the wielder state indicates to do so!
                 if wielder.shooting() {
-                    inv.consume_equipped();
+                    l8r.insert_one(wielder_ent, crate::items::InventoryConsumeEquipped);
                     l8r.insert_one(wep_ent, Velocity(delta.into_inner() * weapon.speed));
                 }
 

@@ -13,7 +13,7 @@ type Iso2 = na::Isometry2<f32>;
 
 const DIMENSIONS: Vector = Vector { x: 480.0, y: 270.0 };
 const TILE_SIZE: f32 = 16.0;
-const SCALE: f32 = 4.0;
+const SCALE: f32 = 3.0;
 
 mod config;
 use config::ConfigHandler;
@@ -30,6 +30,10 @@ pub struct L8r(Vec<Box<dyn FnOnce(&mut World)>>);
 impl L8r {
     pub fn new() -> Self {
         L8r(Vec::new())
+    }
+
+    pub fn schedule(&mut self, then: Box<dyn FnOnce(&mut World)>) {
+        self.0.push(then);
     }
 
     pub fn l8r<F: 'static + Send + Sync + FnOnce(&mut World)>(&mut self, then: F) {
@@ -50,6 +54,10 @@ impl L8r {
         components_bundle: C,
     ) {
         self.l8r(move |world| world.ecs.insert(ent, components_bundle).unwrap())
+    }
+
+    pub fn spawn<C: 'static + Send + Sync + hecs::DynamicBundle>(&mut self, components_bundle: C) {
+        self.l8r(move |world| drop(world.ecs.spawn(components_bundle)))
     }
 
     pub fn drain(&mut self) -> Vec<Box<dyn FnOnce(&mut World)>> {
@@ -107,7 +115,7 @@ impl State for Game {
             },
             aiming::Wielder::new(),
             items::Inventory::new(),
-            items::InventoryEquip(Some("spear")),
+            items::InventoryEquip(Some("spear".to_string())),
             graphics::sprite_sheet::Animation::new(),
             graphics::sprite_sheet::Index::new(),
         ));
@@ -129,6 +137,22 @@ impl State for Game {
                 items::InventoryInsert(player),
             ));
         }
+
+        world.l8r.spawn((
+            graphics::Appearance {
+                kind: graphics::AppearanceKind::image("flower_power"),
+                z_offset: 90.0,
+                ..Default::default()
+            },
+            aiming::Weapon {
+                bottom_padding: last_keyframe.bottom_padding,
+                offset: last_keyframe.pos,
+                equip_time: 50,
+                speed: 3.0,
+                ..Default::default()
+            },
+            items::InventoryInsert(player),
+        ));
 
         for i in 0..4 {
             world.ecs.spawn((

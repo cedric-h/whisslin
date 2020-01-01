@@ -51,6 +51,18 @@ pub struct InventoryWindow {
     loose_slots: Vec<Entity>,
 }
 impl InventoryWindow {
+    /// Takes out_ent out of the inventory and puts in_ent into the same category of slots
+    /// as out_ent was in. This means that this method works for equipped_slots and loose_slots,
+    /// and whichever of those two out_ent was, in_ent will become.
+    fn swap_in_out(&mut self, in_ent: Entity, out_ent: Entity) {
+        if out_ent == self.equipped_slot {
+            self.equipped_slot = in_ent;
+        } else {
+            self.loose_slots.retain(|x| *x != out_ent);
+            self.loose_slots.push(in_ent);
+        }
+    }
+
     /// Iterates over all of the slots in the inventory and compares them to the provided name.
     /// Returns the entity and slot, if any, that houses items of the name provided.
     fn find_item_slot<'a>(
@@ -230,7 +242,7 @@ pub fn build_inventory_gui_entities(world: &mut World, parent: Entity) -> Invent
             ecs.spawn(blank_icon()),
             ecs.spawn(blank_counter()),
         );
-        ecs.spawn(slot)
+        dbg!(ecs.spawn(slot))
     };
 
     let mut loose_slots = vec![];
@@ -312,7 +324,15 @@ pub fn try_slot_insert<'a>(
     Some(())
 }
 
-fn try_swap_docking_ents(
+/// Attempts to swap two ItemSlot entities, having each dock to the location
+/// previously occupied by the other and changing their parents records of which
+/// ItemSlot holds the equipped, if necessary.
+///
+/// May return early if the entities don't have Docking or ItemSlot components.
+///
+/// Panics if either ItemSlot's record of who their parent points to an invalid entity
+/// (one without an InventoryWindow component).
+fn try_swap_slot_ents(
     left_ent: Entity,
     right_ent: Entity,
     ecs: &hecs::World,
@@ -322,17 +342,53 @@ fn try_swap_docking_ents(
     let right_docking = *ecs.get::<Docking>(right_ent).ok()?;
 
     {
-        let mut right_docking = ecs.get_mut::<Docking>(right_ent).ok()?;
+        let mut right_docking = ecs.get_mut::<Docking>(right_ent).unwrap();
 
         *right_docking = left_docking;
         right_docking.dock(right_ent, l8r);
     }
 
     {
-        let mut left_docking = ecs.get_mut::<Docking>(left_ent).ok()?;
+        let mut left_docking = ecs.get_mut::<Docking>(left_ent).unwrap();
 
         *left_docking = right_docking;
         right_docking.dock(left_ent, l8r);
+    }
+
+    let left_parent = ecs.get::<ItemSlot>(left_ent).ok()?.parent;
+    let left_equipped = {
+        ecs.get::<InventoryWindow>(left_parent)
+            .unwrap_or_else(|_| {
+                panic!(
+                    "ItemSlot[{:?}]'s parent[{:?}] has no inventory window!",
+                    left_ent, left_parent
+                )
+            })
+            .equipped_slot
+            == left_ent
+    };
+    let right_parent = ecs.get::<ItemSlot>(right_ent).ok()?.parent;
+    let right_equipped = {
+        ecs.get::<InventoryWindow>(right_parent)
+            .unwrap_or_else(|_| {
+                panic!(
+                    "ItemSlot[{:?}]'s parent[{:?}] has no inventory window!",
+                    right_ent, right_parent
+                )
+            })
+            .equipped_slot
+            == right_ent
+    };
+
+    if left_equipped {
+        ecs.get_mut::<InventoryWindow>(left_parent)
+            .unwrap()
+            .swap_in_out(right_ent, left_ent);
+    }
+    if right_equipped {
+        ecs.get_mut::<InventoryWindow>(right_parent)
+            .unwrap()
+            .swap_in_out(left_ent, right_ent);
     }
 
     Some(())
@@ -349,21 +405,61 @@ pub fn inventory_events(world: &mut World, images: &mut graphics::images::ImageM
     }
 
     // reflecting the equipping of an item in the gui is as simple as swapping the positions of the slots.
-    for (_, (&items::InventoryEquip(equipped_type), inv_window)) in
-        &mut ecs.query::<(&items::InventoryEquip, &mut InventoryWindow)>()
-    {
+    for (inv_ent, inv_equip) in &mut ecs.query::<&items::InventoryEquip>() {
         // NOTE: this could bug out if you like equipped an item while dragging a slot
         // around to drop it somewhere else? or not.
 
-        try_swap_docking_ents(
-            match equipped_type.and_then(|t| inv_window.find_item_slot(&ecs, t)) {
-                Some((ent, _)) => ent,
-                None => continue,
-            },
-            inv_window.equipped_slot,
-            ecs,
-            l8r,
-        );
+        let (swap_left, swap_right) = {
+            let inv_window = match ecs.get::<InventoryWindow>(inv_ent) {
+                Ok(w) => w,
+                Err(_) => continue,
+            };
+            (
+                match inv_equip
+                    .0
+                    .as_ref()
+                    .and_then(|t| inv_window.find_item_slot(&ecs, t))
+                    .map(|(ent, _)| ent)
+                {
+                    Some(ent) => ent,
+                    None => continue,
+                },
+                inv_window.equipped_slot,
+            )
+        };
+
+        try_swap_slot_ents(swap_left, swap_right, ecs, l8r);
+    }
+
+    for (inv_ent, (_, inv_window)) in
+        &mut ecs.query::<(&items::InventoryConsumeEquipped, &mut InventoryWindow)>()
+    {
+        let equipped_ent = inv_window.equipped_slot;
+        let slot = ecs.get::<ItemSlot>(equipped_ent).unwrap_or_else(|_| {
+            panic!(
+                "No ItemSlot component on equipped_slot[{:?}] on Inventory[{:?}]!",
+                equipped_ent, inv_ent
+            )
+        });
+        let mut counter = ecs
+            .get_mut::<Counter>(slot.counter_ent)
+            .unwrap_or_else(|_| {
+                panic!(
+                    "No Counter component on Inventory[{:?}]'s ItemSlot[{:?}]'s counter_ent[{:?}]",
+                    inv_ent, equipped_ent, slot.counter_ent
+                )
+            });
+        counter.0 -= 1;
+
+        if counter.0 > 0 {
+            l8r.insert_one(
+                slot.counter_ent,
+                counter.make_graphics_appearance(equipped_ent),
+            );
+        } else {
+            l8r.remove_one::<graphics::Appearance>(slot.counter_ent);
+            l8r.remove_one::<graphics::Appearance>(slot.icon_ent);
+        }
     }
 }
 
@@ -436,11 +532,12 @@ impl GuiState {
         } else {
             // if they're releasing what they've been dragging over another entity,
             if let (Some(released_ent), Some(under_ent)) = (self.dragging_ent, draggable_under) {
-                Self::handle_drag_drop(under_ent, released_ent, ecs, l8r);
+                Self::handle_drag_drop(ecs, l8r, under_ent, released_ent);
 
                 self.dragging_ent = None;
             }
             // if there isn't a second ent that we're dropping on top of, however,
+            // the item slot was released over the void, we need to drop the items.
             else if let Some(released_ent) = self.dragging_ent {
             }
             self.last_mouse_down_pos = None;
@@ -448,52 +545,48 @@ impl GuiState {
     }
 
     fn handle_drag_drop(
+        ecs: &hecs::World,
+        l8r: &mut crate::L8r,
         // the entity that is under what was being dragged, the ent in the "drop zone"
         drop_ent: Entity,
         // the entity that was being dragged and is now being released over something else.
         drag_ent: Entity,
-        ecs: &hecs::World,
-        l8r: &mut crate::L8r,
     ) -> Option<()> {
-        // if the item slot was released over the void, we need to drop the items.
         // if it was released over another item slot, we need to swap the slots.
-        // anything else just zips the item slot back home.
+        // anything else just zips the item slot back on home.
 
-        // returns the entity of the a given's slot parent if the slot is equipped on that window
-        let equipped_on_parent = |ent, slot: hecs::Ref<ItemSlot>| -> Option<Entity> {
-            let parent = slot.parent;
+        // Returns true if the child_ent is the equipped slot in their parent InventoryWindow.
+        let equipped = |child_ent, child_slot: &hecs::Ref<ItemSlot>| -> bool {
+            let parent = child_slot.parent;
 
-            let parent_inventory = ecs.get::<items::Inventory>(parent).unwrap_or_else(|_| {
+            let parent_inventory = ecs.get::<InventoryWindow>(parent).unwrap_or_else(|_| {
                 panic!(
-                    "ItemSlot[{:?}]'s parent[{:?}] has no inventory!",
-                    ent, slot.parent
+                    "ItemSlot[{:?}]'s parent[{:?}] has no inventory window!",
+                    child_ent, parent
                 )
             });
 
-            slot.item_name.as_ref().and_then(move |slot_item_name| {
-                parent_inventory
-                    .equipped
-                    .as_ref()
-                    .filter(|(_, equipped_item_name)| slot_item_name == equipped_item_name)
-                    .map(|_| parent)
-            })
+            parent_inventory.equipped_slot == child_ent
         };
 
-        // swapping item slots is easy enough, although it's slightly more complicated if either
-        // slot is the "equipped slot" of that inventory
+        // both are slots, so they need to be swapped!
         if let (Ok(drop_slot), Ok(drag_slot)) =
             (ecs.get::<ItemSlot>(drop_ent), ecs.get::<ItemSlot>(drag_ent))
         {
-            // if either of the slots being swapped are equipped slots,
-            // we need to launch an event to swap them.
-            let drop_parent_equipped = equipped_on_parent(drop_ent, drop_slot);
-            let drag_parent_equipped = equipped_on_parent(drag_ent, drag_slot);
-            if let Some(equipped_ent) = drop_parent_equipped.or(drag_parent_equipped) {
+            if equipped(drop_ent, &drop_slot) {
+                l8r.insert_one(
+                    drop_slot.parent,
+                    items::InventoryEquip(drag_slot.item_name.clone()),
+                );
             }
-            //Otherwise, swapping between two loose slots is purely aesthetic and we can schedule that right now.
-            else {
-                try_swap_docking_ents(drop_ent, drag_ent, ecs, l8r);
+            if equipped(drag_ent, &drag_slot) {
+                l8r.insert_one(
+                    drag_slot.parent,
+                    items::InventoryEquip(drop_slot.item_name.clone()),
+                );
             }
+
+            try_swap_slot_ents(drop_ent, drag_ent, ecs, l8r);
         }
         // if they were dropped on top of some other gui element, but that gui element isn't
         // an ItemSlot, we can just send the draggable back home.
