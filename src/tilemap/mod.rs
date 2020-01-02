@@ -5,9 +5,9 @@ use crate::World;
 use crate::{graphics, Iso2, Vec2};
 use hecs::EntityBuilder;
 use ncollide2d::shape::Cuboid;
-use std::collections::HashMap;
+use fxhash::FxHashMap;
 
-pub fn new_tilemap(tilemap: &str, tile_prop: &HashMap<String, TileProperty>, world: &mut World) {
+pub fn new_tilemap(tilemap: &str, tile_prop: &FxHashMap<String, TileProperty>, world: &mut World) {
     let mut tile_builder = EntityBuilder::new();
     let default = TileProperty::default();
 

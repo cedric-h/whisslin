@@ -1,9 +1,9 @@
 use quicksilver::graphics::Image;
 use quicksilver::lifecycle::Asset;
-use std::collections::HashMap;
+use fxhash::FxHashMap;
 use std::fs;
 
-pub type ImageMap = HashMap<String, Asset<Image>>;
+pub type ImageMap = FxHashMap<String, Asset<Image>>;
 
 pub fn fetch_images() -> ImageMap {
     fs::read_dir("./img/")
