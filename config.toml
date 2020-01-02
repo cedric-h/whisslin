@@ -1,9 +1,3 @@
-keyframes = [
-	{ time = 0.0, pos = [0.2, -0.4], rot = 25, bottom_padding = 0 },
-
-	# default state config
-	{ pos = [0.2, -0.4], bottom_padding = 0.6 },
-]
 
 tilemap = """\
 GrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrDiDi
@@ -25,6 +19,51 @@ GrGrGrGrGrGrGrGrGrDiGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGr
 GrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGr
 """
 
+[weapons.spear]
+# appearance
+image = "spear"
+readying_time = 60
+equip_time = 60
+equip_keyframes = [
+	{ time = 0.0, pos = [-0.2, -0.4], rot = -25, bottom_padding = -0.5 },
+	{ time = 0.2, pos = [0.5, -0.8], rot = -45, bottom_padding = -0.4 },
+	{ time = 0.4, pos = [0.6, -0.9], rot = -200, bottom_padding = -0.6 },
+	{ time = 0.6, pos = [0.0, -0.7], rot = -350, bottom_padding = -0.3 },
+	{ time = 0.7, rot = 25, bottom_padding = 0.2}
+]
+# default (readied) positioning
+offset = [0.115, -0.385]
+bottom_padding = 0.325
+# projectile
+projectile_speed = 2.125
+
+[weapons.flower_power]
+# appearance
+image = "flower_power"
+readying_time = 60
+equip_time = 60
+equip_keyframes = [
+	{ time = 0.0, pos = [-0.2, -0.4], rot = -25, bottom_padding = -0.5 },
+	{ time = 0.2, pos = [0.5, -0.8], rot = -45, bottom_padding = -0.4 },
+	{ time = 0.4, pos = [0.6, -0.9], rot = -200, bottom_padding = -0.6 },
+	{ time = 0.6, pos = [0.0, -0.7], rot = -350, bottom_padding = -0.3 },
+	{ time = 0.7, rot = 25, bottom_padding = 0.2}
+]
+# default (readied) positioning
+offset = [0.115, -0.385]
+bottom_padding = 0.325
+# projectile
+projectile_speed = 2.125
+[player]
+speed = 0.1
+image = "creep"
+size = [0.7, 0.3]
+pos = [15.0, 8.5]
+inventory = [
+	{ name = "spear", count = 99, flags = ["equipped"] },
+	{ name = "flower_power" },
+]
+
 [tiles.Gr]
 name = "Grass"
 image = "grass"
@@ -42,12 +81,6 @@ farmable = true
 name = "Bad"
 image = "unknown"
 collidable = true
-
-[player]
-speed = 0.1
-image = "creep"
-size = [0.7, 0.3]
-pos = [15.0, 8.5]
 
 [sprite_sheets.creep]
 frame_size = [24, 24]

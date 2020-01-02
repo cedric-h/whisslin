@@ -96,63 +96,12 @@ struct Game {
 
 impl State for Game {
     fn new() -> Result<Game> {
-        let mut config = ConfigHandler::new().unwrap_or_else(|e| panic!("{}", e));
+        let config = ConfigHandler::new().unwrap_or_else(|e| panic!("{}", e));
         let images = fetch_images();
 
         let mut world = World::new();
 
-        let last_keyframe = config.keyframes.pop().unwrap();
-
-        let player = world.ecs.spawn((
-            graphics::Appearance {
-                kind: graphics::AppearanceKind::image(&config.player.image),
-                ..Default::default()
-            },
-            Cuboid::new(config.player.size / 2.0),
-            Iso2::translation(config.player.pos.x, config.player.pos.y),
-            movement::PlayerControlled {
-                speed: config.player.speed,
-            },
-            aiming::Wielder::new(),
-            items::Inventory::new(),
-            items::InventoryEquip(Some("spear".to_string())),
-            graphics::sprite_sheet::Animation::new(),
-            graphics::sprite_sheet::Index::new(),
-        ));
-
-        for _ in 0..99 {
-            world.ecs.spawn((
-                graphics::Appearance {
-                    kind: graphics::AppearanceKind::image("spear"),
-                    z_offset: 90.0,
-                    ..Default::default()
-                },
-                aiming::Weapon {
-                    bottom_padding: last_keyframe.bottom_padding,
-                    offset: last_keyframe.pos,
-                    equip_time: 50,
-                    speed: 3.0,
-                    ..Default::default()
-                },
-                items::InventoryInsert(player),
-            ));
-        }
-
-        world.l8r.spawn((
-            graphics::Appearance {
-                kind: graphics::AppearanceKind::image("flower_power"),
-                z_offset: 90.0,
-                ..Default::default()
-            },
-            aiming::Weapon {
-                bottom_padding: last_keyframe.bottom_padding,
-                offset: last_keyframe.pos,
-                equip_time: 50,
-                speed: 3.0,
-                ..Default::default()
-            },
-            items::InventoryInsert(player),
-        ));
+        let player = config.spawn(&mut world);
 
         for i in 0..4 {
             world.ecs.spawn((
@@ -166,12 +115,24 @@ impl State for Game {
             ));
         }
 
+        const ENEMY_COUNT: usize = 4;
+        for i in 0..ENEMY_COUNT {
+            let angle = (std::f32::consts::PI * 2.0 / (ENEMY_COUNT as f32)) * (i as f32);
+            let pos = na::UnitComplex::from_angle(angle) * Vec2::repeat(20.0);
+
+            world.ecs.spawn((
+                graphics::Appearance {
+                    kind: graphics::AppearanceKind::image("sandwich"),
+                    ..Default::default()
+                },
+                phys::Chase::new(player, 0.05),
+                //Cuboid::new(Vec2::new(1.0, 0.2) / 2.0),
+                Iso2::new(pos, angle),
+            ));
+        }
+
         // Tilemap stuffs
         tilemap::new_tilemap(&config.tilemap, &config.tiles, &mut world);
-
-        // attach the inventory GUI window to the player
-        let window = gui::build_inventory_gui_entities(&mut world, player);
-        world.ecs.insert_one(player, window).unwrap();
 
         Ok(Game {
             world,
@@ -210,10 +171,11 @@ impl State for Game {
 
     fn update(&mut self, window: &mut Window) -> Result<()> {
         #[cfg(feature = "hot-config")]
-        self.config.reload();
+        self.config.reload(&mut self.world);
 
         movement::movement(&mut self.world, window);
         phys::velocity(&mut self.world);
+        phys::chase(&mut self.world);
         collision::collision(&mut self.world);
 
         let mouse = window.mouse();

@@ -4,6 +4,9 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt;
 
+#[cfg(feature = "hot-config")]
+pub struct ReloadWithConfig;
+
 #[derive(Debug, Deserialize)]
 pub struct TileProperty {
     pub name: String,
@@ -25,20 +28,145 @@ impl Default for TileProperty {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct InventoryEntry {
+    pub name: String,
+    pub count: Option<usize>,
+    #[serde(default)]
+    pub flags: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct PlayerConfig {
     pub speed: f32,
     pub image: String,
     pub size: Vec2,
     pub pos: Vec2,
+    pub inventory: Vec<InventoryEntry>,
+}
+impl PlayerConfig {
+    pub fn spawn(
+        &self,
+        world: &mut crate::World,
+        weapons: &HashMap<String, WeaponConfig>,
+    ) -> hecs::Entity {
+        use crate::Iso2;
+        use crate::{aiming, graphics, items, movement, phys};
+        use ncollide2d::shape::Cuboid;
+
+        let player = world.ecs.spawn((
+            graphics::Appearance {
+                kind: graphics::AppearanceKind::image(&self.image),
+                ..Default::default()
+            },
+            Cuboid::new(self.size / 2.0),
+            Iso2::new(self.pos, 0.0),
+            movement::PlayerControlled { speed: self.speed },
+            aiming::Wielder::new(),
+            items::Inventory::new(),
+            graphics::sprite_sheet::Animation::new(),
+            graphics::sprite_sheet::Index::new(),
+            #[cfg(feature = "hot-config")]
+            ReloadWithConfig,
+        ));
+
+        for InventoryEntry { name, count, flags } in self.inventory.iter() {
+            let count = count.unwrap_or(1);
+
+            for flag in flags.iter() {
+                // TODO: compile time function table!
+                match flag.as_str() {
+                    "equipped" | "equip" => {
+                        world
+                            .l8r
+                            .insert_one(player, items::InventoryEquip(Some(name.clone())));
+                    }
+                    _ => panic!(
+                        concat!(
+                            "unknown flag {:?} provided in config file!",
+                            "flag must be one of: [\"equipped\", \"equip\"]!"
+                        ),
+                        flag,
+                    ),
+                }
+            }
+
+            for _ in 0..count {
+                let ent = weapons
+                    .get(name)
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "Couldn't spawn {} {:?}{} for player's inventory: no weapon config found for {}!",
+                            count,
+                            &name,
+                            Some(flags)
+                                .filter(|f| !f.is_empty())
+                                .map(|f| format!(" with flags {:?}", &f))
+                                .unwrap_or_default(),
+                            &name
+                        )
+                    })
+                    .spawn(world);
+                world.l8r.insert_one(ent, items::InventoryInsert(player));
+                world
+                    .l8r
+                    .insert_one(ent, phys::Chase::new(player, self.speed));
+            }
+        }
+
+        player
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct WeaponConfig {
+    // appearance
+    pub image: String,
+    pub equip_keyframes: KeyFrames,
+    pub equip_time: u16,
+    pub readying_time: u16,
+
+    // positioning
+    pub offset: Vec2,
+    pub bottom_padding: f32,
+
+    // projectile
+    pub projectile_speed: f32,
+}
+impl WeaponConfig {
+    pub fn spawn(&self, world: &mut crate::World) -> hecs::Entity {
+        use crate::{aiming, graphics};
+        world.ecs.spawn((
+            graphics::Appearance {
+                kind: graphics::AppearanceKind::image(self.image.clone()),
+                z_offset: 90.0,
+                ..Default::default()
+            },
+            aiming::Weapon {
+                // positioning
+                bottom_padding: self.bottom_padding,
+                offset: self.offset,
+
+                // animations
+                equip_time: self.equip_time,
+                readying_time: self.readying_time,
+                animations: self.image.clone(),
+
+                // projectile
+                speed: self.projectile_speed,
+            },
+            #[cfg(feature = "hot-config")]
+            ReloadWithConfig,
+        ))
+    }
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    pub keyframes: KeyFrames,
+    pub tilemap: String,
     pub player: PlayerConfig,
+    pub weapons: HashMap<String, WeaponConfig>,
     pub tiles: HashMap<String, TileProperty>,
     pub sprite_sheets: HashMap<String, crate::graphics::sprite_sheet::Entry>,
-    pub tilemap: String,
 }
 
 impl Config {
@@ -62,6 +190,16 @@ impl Config {
         let input = &tempput;
 
         toml::from_str(input).map_err(|e| e.into())
+    }
+
+    pub fn spawn(&self, world: &mut crate::World) -> hecs::Entity {
+        let player = self.player.spawn(world, &self.weapons);
+
+        // attach the inventory GUI window to the player
+        let window = crate::gui::build_inventory_gui_entities(world, player);
+        world.ecs.insert_one(player, window).unwrap();
+
+        player
     }
 }
 
@@ -109,7 +247,7 @@ impl ConfigHandler {
 
     #[cfg(feature = "hot-config")]
     /// Reloads config file if notify indicates to do so.
-    pub fn reload(&mut self) {
+    pub fn reload(&mut self, world: &mut crate::World) {
         use notify::{Event, EventKind::Create};
         while let Ok(Ok(Event {
             kind: Create(_), ..
@@ -119,6 +257,33 @@ impl ConfigHandler {
             match Config::load() {
                 Err(e) => println!("Couldn't load new keyframe file: {}", e),
                 Ok(config) => {
+                    let to_reload = world
+                        .ecs
+                        .query::<&ReloadWithConfig>()
+                        .iter()
+                        .map(|(id, _)| id)
+                        .collect::<Vec<hecs::Entity>>();
+
+                    println!(
+                        "Deleting {} entities marked with 'ReloadWithConfig' components.",
+                        to_reload.len()
+                    );
+
+                    for ent in to_reload.into_iter() {
+                        world.ecs.despawn(ent).unwrap_or_else(|e| panic!(
+                            "Couldn't delete entity[{:?}] marked with 'ReloadWithConfig' component during reloading: {}",
+                            ent,
+                            e
+                        ));
+                    }
+
+                    config.spawn(world);
+
+                    println!(
+                        "Respawned {} entities.",
+                        world.ecs.query::<&ReloadWithConfig>().iter().len()
+                    );
+
                     println!("Reload successful!");
                     self.config = config;
                 }
@@ -126,7 +291,6 @@ impl ConfigHandler {
         }
     }
 }
-
 impl std::ops::Deref for ConfigHandler {
     type Target = Config;
 

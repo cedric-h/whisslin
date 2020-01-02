@@ -184,6 +184,8 @@ pub fn build_inventory_gui_entities(world: &mut World, parent: Entity) -> Invent
             z_offset: 100.0,
             ..Default::default()
         },
+        #[cfg(feature = "hot-config")]
+        crate::config::ReloadWithConfig,
     ));
 
     // a thin line that cuts across the GUI, deliminating sections.
@@ -199,6 +201,8 @@ pub fn build_inventory_gui_entities(world: &mut World, parent: Entity) -> Invent
                 z_offset: 110.0,
                 ..Default::default()
             },
+            #[cfg(feature = "hot-config")]
+            crate::config::ReloadWithConfig,
         )
     };
 
@@ -222,15 +226,30 @@ pub fn build_inventory_gui_entities(world: &mut World, parent: Entity) -> Invent
                 z_offset: 120.0,
                 ..Default::default()
             },
+            #[cfg(feature = "hot-config")]
+            crate::config::ReloadWithConfig,
         )
     };
 
     // these guys aren't actually given real appearances until an item
     // is put in the slots they are associated with.
     // position relative: slot top left
-    let blank_icon = || (Iso2::translation(0.1, 0.1),);
+    let blank_icon = || {
+        (
+            Iso2::translation(0.1, 0.1),
+            #[cfg(feature = "hot-config")]
+            crate::config::ReloadWithConfig,
+        )
+    };
     // position relative: slot center
-    let blank_counter = || (Iso2::translation(1.4, 0.4), Counter(0));
+    let blank_counter = || {
+        (
+            Iso2::translation(1.4, 0.4),
+            Counter(0),
+            #[cfg(feature = "hot-config")]
+            crate::config::ReloadWithConfig,
+        )
+    };
 
     ecs.spawn(hr(0.5, 0.5));
     ecs.spawn(hr(0.5, 2.5));
