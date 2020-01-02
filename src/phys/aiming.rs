@@ -217,9 +217,10 @@ pub struct Weapon {
     pub offset: Vec2,
     pub bottom_padding: f32,
 
-    // timing
+    // animations
     pub equip_time: u16,
     pub readying_time: u16,
+    pub animations: String,
 
     // projectile
     pub speed: f32,
@@ -234,6 +235,7 @@ impl Default for Weapon {
             // timing
             equip_time: 60,
             readying_time: 60,
+            animations: "spear".to_string(),
 
             // projectile
             speed: 1.0,
@@ -325,50 +327,73 @@ impl Weapon {
 }
 
 pub fn aiming(world: &mut World, window: &mut Window, cfg: &Config) {
+    use crate::graphics;
+
     // manually splitting the borrow to appease rustc
     let ecs = &world.ecs;
     let l8r = &mut world.l8r;
 
-    ecs.query::<(&Iso2, &mut Inventory, &mut Wielder)>()
+    ecs.query::<(&Iso2, &mut Inventory, &mut Wielder, &graphics::Appearance)>()
         .into_iter()
         // updates the weapon's position relative to the wielder,
         // if clicking, queues adding velocity to the weapon and unequips it.
         // if the weapon that's been equipped doesn't have an iso, queue adding one
-        .for_each(|(wielder_ent, (wielder_iso, inv, wielder))| {
-            // closure for early None return
-            (|| {
-                let wep_ent = inv.equipped_ent()?;
-                let mut weapon = ecs.get_mut::<Weapon>(wep_ent).ok()?;
-                let mut appearance = ecs.get_mut::<crate::graphics::Appearance>(wep_ent).ok()?;
+        .for_each(
+            |(wielder_ent, (wielder_iso, inv, wielder, wielder_appearance))| {
+                // closure for early None return
+                (|| {
+                    let wep_ent = inv.equipped_ent()?;
+                    let mut weapon = ecs.get_mut::<Weapon>(wep_ent).ok()?;
 
-                // physics temporaries
-                let mouse = window.mouse();
-                let delta = Unit::new_normalize(
-                    mouse.pos().into_vector() - (wielder_iso.translation.vector + weapon.offset),
-                );
+                    // physics temporaries
+                    let mouse = window.mouse();
+                    let delta = Unit::new_normalize(
+                        mouse.pos().into_vector()
+                            - (wielder_iso.translation.vector + weapon.offset),
+                    );
 
-                wielder.advance_state(mouse[MouseButton::Left].is_down(), &weapon);
-                let frame = weapon.animation_frame(delta, wielder.state, &cfg.keyframes)?;
+                    let keyframes = &cfg.weapons
+                        .get(&weapon.animations)
+                        .unwrap_or_else(|| {
+                            panic!(
+                                "Can't find keyframes to animate; No weapon config could be found for {}!",
+                                weapon.animations
+                            )
+                        })
+                        .equip_keyframes;
+                    wielder.advance_state(mouse[MouseButton::Left].is_down(), &weapon);
+                    let frame = weapon.animation_frame(delta, wielder.state, keyframes)?;
 
-                // update world with new frame data
-                appearance.alignment = crate::graphics::Alignment::Bottom(frame.bottom_padding);
-                let mut frame_iso = frame.into_iso2();
-                frame_iso.translation.vector += wielder_iso.translation.vector;
+                    {
+                        let mut wep_appearance =
+                            ecs.get_mut::<graphics::Appearance>(wep_ent).ok()?;
+                        wep_appearance.alignment =
+                            graphics::Alignment::Bottom(frame.bottom_padding);
+                        wep_appearance.flip_x = wielder_appearance.flip_x;
+                    }
 
-                // get and modify if possible or just insert the weapon's current position
-                let mut wep_iso = ecs
-                    .get_mut::<Iso2>(wep_ent)
-                    .map_err(|_| l8r.insert_one(wep_ent, frame_iso))
-                    .ok()?;
-                *wep_iso = frame_iso;
+                    // handle positioning
+                    let mut frame_iso = frame.into_iso2();
+                    if wielder_appearance.flip_x {
+                        frame_iso.translation.vector.x *= -1.0;
+                    }
+                    frame_iso.translation.vector += wielder_iso.translation.vector;
 
-                // fire the spear if the wielder state indicates to do so!
-                if wielder.shooting() {
-                    l8r.insert_one(wielder_ent, crate::items::InventoryConsumeEquipped);
-                    l8r.insert_one(wep_ent, Velocity(delta.into_inner() * weapon.speed));
-                }
+                    // get and modify if possible or just insert the weapon's current position
+                    let mut wep_iso = ecs
+                        .get_mut::<Iso2>(wep_ent)
+                        .map_err(|_| l8r.insert_one(wep_ent, frame_iso))
+                        .ok()?;
+                    *wep_iso = frame_iso;
 
-                Some(())
-            })();
-        });
+                    // fire the spear if the wielder state indicates to do so!
+                    if wielder.shooting() {
+                        l8r.insert_one(wielder_ent, crate::items::InventoryConsumeEquipped);
+                        l8r.insert_one(wep_ent, Velocity(delta.into_inner() * weapon.speed));
+                    }
+
+                    Some(())
+                })();
+            },
+        );
 }
