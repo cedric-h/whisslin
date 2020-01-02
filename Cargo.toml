@@ -25,6 +25,7 @@ nalgebra = { version = "0.19.0", features = ["serde-serialize"] }
 toml = "0.5.5"
 serde = "1.0.104"
 serde_derive = "1.0.104"
+fxhash = "0.2.1"
 
 # keyframe live reload
 [dependencies.notify]

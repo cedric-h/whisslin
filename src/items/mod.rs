@@ -1,6 +1,6 @@
 use crate::{Iso2, World};
 use hecs::Entity;
-use std::collections::HashMap;
+use fxhash::FxHashMap;
 
 /// Entities with this component get inserted into the Inventory
 /// component of the given Entity at the end of the next frame.
@@ -108,7 +108,7 @@ pub struct Inventory {
     // linked to its appearance, (and in this case the behavior
     // that this is linked to is item stacking) but...
     // works for now
-    slots: HashMap<String, Vec<Entity>>,
+    slots: FxHashMap<String, Vec<Entity>>,
 
     // the type of the equipped thing is also stored
     pub equipped: Option<(Entity, String)>,

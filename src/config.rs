@@ -1,7 +1,7 @@
 use crate::phys::aiming::KeyFrames;
 use crate::Vec2;
 use serde::Deserialize;
-use std::collections::HashMap;
+use fxhash::FxHashMap;
 use std::fmt;
 
 #[cfg(feature = "hot-config")]
@@ -47,7 +47,7 @@ impl PlayerConfig {
     pub fn spawn(
         &self,
         world: &mut crate::World,
-        weapons: &HashMap<String, WeaponConfig>,
+        weapons: &FxHashMap<String, WeaponConfig>,
     ) -> hecs::Entity {
         use crate::Iso2;
         use crate::{aiming, graphics, items, movement, phys};
@@ -164,9 +164,9 @@ impl WeaponConfig {
 pub struct Config {
     pub tilemap: String,
     pub player: PlayerConfig,
-    pub weapons: HashMap<String, WeaponConfig>,
-    pub tiles: HashMap<String, TileProperty>,
-    pub sprite_sheets: HashMap<String, crate::graphics::sprite_sheet::Entry>,
+    pub weapons: FxHashMap<String, WeaponConfig>,
+    pub tiles: FxHashMap<String, TileProperty>,
+    pub sprite_sheets: FxHashMap<String, crate::graphics::sprite_sheet::Entry>,
 }
 
 impl Config {
