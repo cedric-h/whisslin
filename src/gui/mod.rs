@@ -226,8 +226,44 @@ pub fn build_inventory_gui_entities(world: &mut World, parent: Entity) -> Invent
         hr
     };
 
-    let slot = |world: &mut World, x: f32, y: f32, icon_ent: Entity, counter_ent: Entity| {
+    // these guys aren't actually given real appearances until an item
+    // is put in the slots they are associated with.
+    let blank_icon = |world: &mut World| {
+        let size = Vec2::new(0.8, 0.8);
+
+        let icon = world.ecs.spawn((
+            #[cfg(feature = "hot-config")]
+            crate::config::ReloadWithConfig,
+        ));
+
+        world.add_hitbox_gui(icon, Iso2::translation(0.1, 0.1), Cuboid::new(size / 2.0));
+
+        icon
+    };
+
+    let blank_counter = |world: &mut World| {
+        let size = Vec2::new(0.2, 0.2);
+
+        let blank_counter = world.ecs.spawn((
+            Counter(0),
+            #[cfg(feature = "hot-config")]
+            crate::config::ReloadWithConfig,
+        ));
+
+        world.add_hitbox_gui(
+            blank_counter,
+            Iso2::translation(1.4, 0.4),
+            Cuboid::new(size / 2.0),
+        );
+
+        blank_counter
+    };
+
+    let slot = |world: &mut World, x: f32, y: f32| {
         let size = Vec2::new(2.0, 1.0);
+
+        let icon_ent = blank_icon(world);
+        let counter_ent = blank_counter(world);
 
         let slot = world.ecs.spawn((
             Docking::new(Vec2::new(x, y), 0.4),
@@ -256,58 +292,20 @@ pub fn build_inventory_gui_entities(world: &mut World, parent: Entity) -> Invent
         slot
     };
 
-    // these guys aren't actually given real appearances until an item
-    // is put in the slots they are associated with.
-    let blank_icon = |world: &mut World| {
-        let size = Vec2::new(0.8, 0.8);
-
-        let icon = world.ecs.spawn((
-            #[cfg(feature = "hot-config")]
-            crate::config::ReloadWithConfig,
-        ));
-
-        world.add_hitbox_gui(icon, Iso2::translation(0.1, 0.1), Cuboid::new(size / 2.0));
-
-        icon
-    };
-    let blank_counter = |world: &mut World| {
-        let size = Vec2::new(0.2, 0.2);
-
-        let blank_counter = world.ecs.spawn((
-            Counter(0),
-            #[cfg(feature = "hot-config")]
-            crate::config::ReloadWithConfig,
-        ));
-
-        world.add_hitbox_gui(
-            blank_counter,
-            Iso2::translation(1.4, 0.4),
-            Cuboid::new(size / 2.0),
-        );
-
-        blank_counter
-    };
-
     hr(world, 0.5, 0.5);
     hr(world, 0.5, 2.5);
 
     let equipped_slot = {
-        let icon = blank_icon(world);
-        let counter = blank_counter(world);
-        slot(world, 1.25, 1.0, icon, counter)
+        slot(world, 1.25, 1.0)
     };
 
     let mut loose_slots = vec![];
     for y in 0..2 {
         for x in 0..3 {
-            let icon = blank_icon(world);
-            let counter = blank_counter(world);
             loose_slots.push(slot(
                 world,
                 3.0 * (x as f32) + 1.0,
                 1.5 * (y as f32) + 3.0,
-                icon,
-                counter,
             ));
         }
     }
