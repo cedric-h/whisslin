@@ -49,20 +49,24 @@ impl Alignment {
 
     fn parent_location(&self, world: &World) -> Option<Vec2> {
         if let Alignment::Relative(ent, _) = self {
+            use crate::PhysHandle;
+
             let mut parent_location = world
                 .ecs
-                .get::<Iso2>(*ent)
-                .unwrap_or_else(|_| {
+                .get::<PhysHandle>(*ent)
+                .ok()
+                .map(|x| *x)
+                .and_then(|PhysHandle(h)| world.phys.collision_object(h))
+                .map(|obj| obj.position().translation.vector)
+                .unwrap_or_else(|| {
                     panic!(
                         concat!(
                             "Relative positioning requested for Entity[{:?}], ",
-                            "but no Iso2 component could be found for it."
+                            "but no CollisionObject could be found for it."
                         ),
                         ent
                     )
-                })
-                .translation
-                .vector;
+                });
 
             if let Ok(parent_appearance) = world.ecs.get::<Appearance>(*ent) {
                 if let Some(location) = parent_appearance.alignment.parent_location(world) {
@@ -141,7 +145,7 @@ impl Default for Appearance {
         Self {
             kind: AppearanceKind::Color {
                 color: Color::RED,
-                rectangle: Rectangle::new_sized(Vector::ONE * 128),
+                rectangle: Rectangle::new_sized(Vector::ONE),
             },
             alignment: Alignment::default(),
             z_offset: 0.0,
@@ -161,12 +165,11 @@ pub fn render(
     window.clear(colors::DISCORD)?;
 
     #[allow(unused_variables)]
-    for (_, (appearance, cuboid, sheet_index, iso)) in &mut world.ecs.query::<(
-        &Appearance,
-        Option<&Cuboid<f32>>,
-        Option<&sprite_sheet::Index>,
-        &Iso2,
-    )>() {
+    let mut render_one = |appearance: &Appearance,
+                          sheet_index: Option<&sprite_sheet::Index>,
+                          iso: &Iso2,
+                          cuboid: Option<&Cuboid<f32>>|
+     -> Result<()> {
         let rot = Transform::rotate(iso.rotation.angle().to_degrees());
         let loc = iso.translation.vector;
 
@@ -251,7 +254,38 @@ pub fn render(
                 hitbox_outlines::debug_lines(window, c, iso, 1.0);
             }
         }
+
+        Ok(())
+    };
+
+    for (_, (appearance, sheet_index, iso)) in world
+        .ecs
+        .query::<(&Appearance, Option<&sprite_sheet::Index>, &Iso2)>()
+        .iter()
+    {
+        render_one(appearance, sheet_index, iso, None)?;
     }
+    for (appearance, sheet_index, iso, cuboid) in world.phys.objects.iter().filter_map(|(_, obj)| {
+            let ent = *obj.data();
+            Some((
+                world.ecs.get::<Appearance>(ent).ok()?,
+                world.ecs.get::<sprite_sheet::Index>(ent).ok(),
+                obj.position(),
+                Some(obj.shape().as_shape::<Cuboid<f32>>().unwrap_or_else(|| {
+                    panic!(
+                        "Physical Entity[{:?}] is found in world.phys, but has shape other than Cuboid!",
+                        ent,
+                    )
+                }))
+            ))
+        }) {
+            // if let to avoid some weird hecs::Ref not coercing issues
+            if let Some(sheet_index) = sheet_index {
+                render_one(&appearance, Some(&sheet_index), iso, cuboid)
+            } else {
+                render_one(&appearance, None, iso, cuboid)
+            }?;
+        }
 
     #[cfg(feature = "hitbox-outlines")]
     for (_, (cuboid, iso)) in &mut world.ecs.query::<(&Cuboid<f32>, &Iso2)>() {

@@ -2,7 +2,7 @@ use super::Velocity;
 use crate::config::Config;
 use crate::items::Inventory;
 use crate::World;
-use crate::{na, Iso2, Vec2};
+use crate::{na, Iso2, PhysHandle, Vec2};
 use nalgebra::base::Unit;
 use nalgebra::geometry::UnitComplex;
 use quicksilver::input::MouseButton;
@@ -332,16 +332,20 @@ pub fn aiming(world: &mut World, window: &mut Window, cfg: &Config) {
     // manually splitting the borrow to appease rustc
     let ecs = &world.ecs;
     let l8r = &mut world.l8r;
+    let phys = &mut world.phys;
 
-    ecs.query::<(&Iso2, &mut Inventory, &mut Wielder, &graphics::Appearance)>()
+    ecs.query::<(&PhysHandle, &mut Inventory, &mut Wielder, &graphics::Appearance)>()
         .into_iter()
         // updates the weapon's position relative to the wielder,
         // if clicking, queues adding velocity to the weapon and unequips it.
         // if the weapon that's been equipped doesn't have an iso, queue adding one
         .for_each(
-            |(wielder_ent, (wielder_iso, inv, wielder, wielder_appearance))| {
+            |(wielder_ent, (&PhysHandle(wielder_h), inv, wielder, wielder_appearance))| {
                 // closure for early None return
                 (|| {
+                    let obj = phys.collision_object(wielder_h)?;
+                    let wielder_iso = obj.position();
+
                     let wep_ent = inv.equipped_ent()?;
                     let mut weapon = ecs.get_mut::<Weapon>(wep_ent).ok()?;
 
@@ -380,11 +384,17 @@ pub fn aiming(world: &mut World, window: &mut Window, cfg: &Config) {
                     frame_iso.translation.vector += wielder_iso.translation.vector;
 
                     // get and modify if possible or just insert the weapon's current position
-                    let mut wep_iso = ecs
-                        .get_mut::<Iso2>(wep_ent)
-                        .map_err(|_| l8r.insert_one(wep_ent, frame_iso))
+                    let PhysHandle(wep_h) = *ecs
+                        .get::<PhysHandle>(wep_ent)
+                        .map_err(|_| l8r.l8r(move |world| {
+                            world.add_hitbox_gui(
+                                wep_ent,
+                                frame_iso,
+                                ncollide2d::shape::Cuboid::new(Vec2::new(0.1, 1.0))
+                            );
+                        }))
                         .ok()?;
-                    *wep_iso = frame_iso;
+                    phys.get_mut(wep_h)?.set_position(frame_iso);
 
                     // fire the spear if the wielder state indicates to do so!
                     if wielder.shooting() {

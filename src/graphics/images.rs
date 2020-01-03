@@ -1,6 +1,6 @@
+use fxhash::FxHashMap;
 use quicksilver::graphics::Image;
 use quicksilver::lifecycle::Asset;
-use fxhash::FxHashMap;
 use std::fs;
 
 pub type ImageMap = FxHashMap<String, Asset<Image>>;

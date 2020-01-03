@@ -1,7 +1,7 @@
 use crate::phys::aiming::KeyFrames;
 use crate::Vec2;
-use serde::Deserialize;
 use fxhash::FxHashMap;
+use serde::Deserialize;
 use std::fmt;
 
 #[cfg(feature = "hot-config")]
@@ -58,8 +58,6 @@ impl PlayerConfig {
                 kind: graphics::AppearanceKind::image(&self.image),
                 ..Default::default()
             },
-            Cuboid::new(self.size / 2.0),
-            Iso2::new(self.pos, 0.0),
             movement::PlayerControlled { speed: self.speed },
             aiming::Wielder::new(),
             items::Inventory::new(),
@@ -68,6 +66,11 @@ impl PlayerConfig {
             #[cfg(feature = "hot-config")]
             ReloadWithConfig,
         ));
+        world.add_hitbox(
+            player,
+            Iso2::new(self.pos, 0.0),
+            Cuboid::new(self.size / 2.0),
+        );
 
         for InventoryEntry { name, count, flags } in self.inventory.iter() {
             let count = count.unwrap_or(1);

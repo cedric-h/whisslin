@@ -1,5 +1,5 @@
 use crate::graphics::Appearance;
-use crate::Iso2;
+use crate::PhysHandle;
 use crate::World;
 use quicksilver::{geom::Vector, input::Key, lifecycle::Window};
 
@@ -8,6 +8,9 @@ pub struct PlayerControlled {
 }
 
 pub fn movement(world: &mut World, window: &mut Window) {
+    let ecs = &world.ecs;
+    let phys = &mut world.phys;
+
     #[rustfmt::skip]
     const KEYMAP: &'static [(Key, Vector)] = &[
         (Key::W, Vector { x:  0.0, y: -1.0 }),
@@ -28,13 +31,25 @@ pub fn movement(world: &mut World, window: &mut Window) {
         .normalize();
 
     if move_vec.len2() > 0.0 {
-        for (_, (iso, &PlayerControlled { speed }, appearance)) in world
-            .ecs
-            .query::<(&mut Iso2, &PlayerControlled, &mut Appearance)>()
+        for (_, (&PhysHandle(h), &PlayerControlled { speed }, appearance)) in ecs
+            .query::<(&PhysHandle, &PlayerControlled, &mut Appearance)>()
             .iter()
         {
-            iso.translation.vector += move_vec.into_vector() * speed;
-            appearance.flip_x = move_vec.x < 0.0;
+            (|| {
+                let vel = move_vec.into_vector() * speed;
+
+                let obj = phys.get_mut(h)?;
+                let mut iso = obj.position().clone();
+                iso.translation.vector += vel;
+                obj.set_position_with_prediction(iso.clone(), {
+                    iso.translation.vector += vel;
+                    iso
+                });
+
+                appearance.flip_x = move_vec.x < 0.0;
+
+                Some(())
+            })();
         }
     }
 }
