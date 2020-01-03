@@ -1,3 +1,5 @@
+#![feature(array_value_iter)]
+
 use nalgebra as na;
 use ncollide2d::shape::Cuboid;
 use quicksilver::{
@@ -10,6 +12,11 @@ use std::time::Instant;
 
 type Vec2 = na::Vector2<f32>;
 type Iso2 = na::Isometry2<f32>;
+type CollisionWorld = ncollide2d::world::CollisionWorld<f32, hecs::Entity>;
+pub use ncollide2d::pipeline::CollisionGroups;
+
+#[derive(Clone, Copy)]
+pub struct PhysHandle(pub ncollide2d::pipeline::CollisionObjectSlabHandle);
 
 const DIMENSIONS: Vector = Vector { x: 480.0, y: 270.0 };
 const TILE_SIZE: f32 = 16.0;
@@ -74,13 +81,92 @@ impl L8r {
 pub struct World {
     pub ecs: hecs::World,
     pub l8r: L8r,
+    pub phys: CollisionWorld,
 }
 impl World {
     fn new() -> Self {
         Self {
             ecs: hecs::World::new(),
             l8r: L8r::new(),
+            phys: CollisionWorld::new(0.02),
         }
+    }
+
+    #[inline]
+    fn add_hitbox(&mut self, entity: hecs::Entity, iso: Iso2, cuboid: Cuboid<f32>) -> PhysHandle {
+        self.add_hitbox_grouped(
+            entity,
+            iso,
+            cuboid,
+            CollisionGroups::new().with_membership(&[1]),
+        )
+    }
+
+    #[inline]
+    fn add_hitbox_static(
+        &mut self,
+        entity: hecs::Entity,
+        iso: Iso2,
+        cuboid: Cuboid<f32>,
+    ) -> PhysHandle {
+        self.add_hitbox_grouped(
+            entity,
+            iso,
+            cuboid,
+            CollisionGroups::new()
+                .with_membership(&[2])
+                .with_whitelist(&[1]),
+        )
+    }
+
+    fn add_hitbox_gui(
+        &mut self,
+        entity: hecs::Entity,
+        iso: Iso2,
+        cuboid: Cuboid<f32>,
+    ) -> PhysHandle {
+        self.add_hitbox_grouped(
+            entity,
+            iso,
+            cuboid,
+            CollisionGroups::new()
+                .with_membership(&[3])
+                .with_whitelist(&[]),
+        )
+    }
+
+    #[inline]
+    fn add_hitbox_grouped(
+        &mut self,
+        entity: hecs::Entity,
+        iso: Iso2,
+        cuboid: Cuboid<f32>,
+        groups: CollisionGroups,
+    ) -> PhysHandle {
+        let (h, _) = self.phys.add(
+            iso,
+            ncollide2d::shape::ShapeHandle::new(cuboid),
+            groups,
+            ncollide2d::pipeline::GeometricQueryType::Contacts(0.0, 0.0),
+            entity,
+        );
+        let hnd = PhysHandle(h);
+        self.ecs
+            .insert_one(entity, phys::collision::Contacts::new())
+            .unwrap_or_else(|e| {
+                panic!(
+                    "Couldn't insert Contacts for Entity[{:?}] when adding hitbox: {}",
+                    entity, e
+                )
+            });
+        self.ecs.insert_one(entity, hnd).unwrap_or_else(|e| {
+            panic!(
+                "Couldn't insert PhysHandle[{:?}] for Entity[{:?}] to add hitbox: {}",
+                h, entity, e
+            )
+        });
+
+        hnd
     }
 }
 
@@ -104,15 +190,19 @@ impl State for Game {
         let player = config.spawn(&mut world);
 
         for i in 0..4 {
-            world.ecs.spawn((
+            let fence = world.ecs.spawn((
                 graphics::Appearance {
                     kind: graphics::AppearanceKind::image("smol_fence"),
+                    z_offset: -0.01,
                     ..Default::default()
                 },
                 collision::CollisionStatic,
-                Cuboid::new(Vec2::new(1.0, 0.2) / 2.0),
-                Iso2::translation(8.0 + i as f32, 5.25),
             ));
+            world.add_hitbox_static(
+                fence,
+                Iso2::translation(8.0 + 2.0 * i as f32, 5.25),
+                Cuboid::new(Vec2::new(1.0, 0.2) / 2.0),
+            );
         }
 
         const ENEMY_COUNT: usize = 4;

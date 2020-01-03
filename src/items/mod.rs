@@ -1,6 +1,6 @@
 use crate::{Iso2, World};
-use hecs::Entity;
 use fxhash::FxHashMap;
+use hecs::Entity;
 
 /// Entities with this component get inserted into the Inventory
 /// component of the given Entity at the end of the next frame.

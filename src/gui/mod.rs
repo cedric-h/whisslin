@@ -1,6 +1,6 @@
 use crate::World;
 use crate::{graphics, items, phys};
-use crate::{Iso2, Vec2};
+use crate::{Iso2, PhysHandle, Vec2};
 use hecs::Entity;
 use quicksilver::geom::{Rectangle, Vector};
 use quicksilver::input::{Mouse, MouseButton};
@@ -170,32 +170,44 @@ fn slot_icon_graphics_appearance(
 }
 
 pub fn build_inventory_gui_entities(world: &mut World, parent: Entity) -> InventoryWindow {
-    let ecs = &mut world.ecs;
+    use ncollide2d::shape::Cuboid;
 
-    let window = ecs.spawn((
-        Draggable,
-        Iso2::translation(19.0, 1.0),
-        graphics::Appearance {
-            kind: graphics::AppearanceKind::Color {
-                color: graphics::colors::DISCORD,
-                rectangle: Rectangle::new_sized((10, 6)),
+    let window = {
+        let size = Vec2::new(10.0, 6.0);
+
+        let window = world.ecs.spawn((
+            Draggable,
+            graphics::Appearance {
+                kind: graphics::AppearanceKind::Color {
+                    color: graphics::colors::DISCORD,
+                    rectangle: Rectangle::new_sized(size),
+                },
+                alignment: graphics::Alignment::TopLeft,
+                z_offset: 100.0,
+                ..Default::default()
             },
-            alignment: graphics::Alignment::TopLeft,
-            z_offset: 100.0,
-            ..Default::default()
-        },
-        #[cfg(feature = "hot-config")]
-        crate::config::ReloadWithConfig,
-    ));
+            #[cfg(feature = "hot-config")]
+            crate::config::ReloadWithConfig,
+        ));
+
+        world.add_hitbox_gui(
+            window,
+            Iso2::translation(19.0, 1.0),
+            Cuboid::new(size / 2.0),
+        );
+
+        window
+    };
 
     // a thin line that cuts across the GUI, deliminating sections.
-    let hr = |x: f32, y: f32| {
-        (
-            Iso2::translation(x, y - (0.125 / 2.0)),
+    let hr = |world: &mut World, x: f32, y: f32| {
+        let size = Vec2::new(9.0, 0.125);
+
+        let hr = world.ecs.spawn((
             graphics::Appearance {
                 kind: graphics::AppearanceKind::Color {
                     color: graphics::colors::LIGHT_SLATE_GRAY,
-                    rectangle: Rectangle::new_sized((9, 0.125)),
+                    rectangle: Rectangle::new_sized(size),
                 },
                 alignment: graphics::Alignment::relative(window, graphics::Alignment::TopLeft),
                 z_offset: 110.0,
@@ -203,12 +215,21 @@ pub fn build_inventory_gui_entities(world: &mut World, parent: Entity) -> Invent
             },
             #[cfg(feature = "hot-config")]
             crate::config::ReloadWithConfig,
-        )
+        ));
+
+        world.add_hitbox_gui(
+            hr,
+            Iso2::translation(x, y - (0.125 / 2.0)),
+            Cuboid::new(size / 2.0),
+        );
+
+        hr
     };
 
-    let slot = |x: f32, y: f32, icon_ent: Entity, counter_ent: Entity| {
-        (
-            Iso2::translation(x, y),
+    let slot = |world: &mut World, x: f32, y: f32, icon_ent: Entity, counter_ent: Entity| {
+        let size = Vec2::new(2.0, 1.0);
+
+        let slot = world.ecs.spawn((
             Docking::new(Vec2::new(x, y), 0.4),
             ItemSlot {
                 item_name: None,
@@ -220,7 +241,7 @@ pub fn build_inventory_gui_entities(world: &mut World, parent: Entity) -> Invent
             graphics::Appearance {
                 kind: graphics::AppearanceKind::Color {
                     color: graphics::colors::LIGHT_SLATE_GRAY,
-                    rectangle: Rectangle::new_sized((2, 1)),
+                    rectangle: Rectangle::new_sized(size),
                 },
                 alignment: graphics::Alignment::relative(window, graphics::Alignment::TopLeft),
                 z_offset: 120.0,
@@ -228,52 +249,66 @@ pub fn build_inventory_gui_entities(world: &mut World, parent: Entity) -> Invent
             },
             #[cfg(feature = "hot-config")]
             crate::config::ReloadWithConfig,
-        )
+        ));
+
+        world.add_hitbox_gui(slot, Iso2::translation(x, y), Cuboid::new(size / 2.0));
+
+        slot
     };
 
     // these guys aren't actually given real appearances until an item
     // is put in the slots they are associated with.
-    // position relative: slot top left
-    let blank_icon = || {
-        (
-            Iso2::translation(0.1, 0.1),
+    let blank_icon = |world: &mut World| {
+        let size = Vec2::new(0.8, 0.8);
+
+        let icon = world.ecs.spawn((
             #[cfg(feature = "hot-config")]
             crate::config::ReloadWithConfig,
-        )
+        ));
+
+        world.add_hitbox_gui(icon, Iso2::translation(0.1, 0.1), Cuboid::new(size / 2.0));
+
+        icon
     };
-    // position relative: slot center
-    let blank_counter = || {
-        (
-            Iso2::translation(1.4, 0.4),
+    let blank_counter = |world: &mut World| {
+        let size = Vec2::new(0.2, 0.2);
+
+        let blank_counter = world.ecs.spawn((
             Counter(0),
             #[cfg(feature = "hot-config")]
             crate::config::ReloadWithConfig,
-        )
+        ));
+
+        world.add_hitbox_gui(
+            blank_counter,
+            Iso2::translation(1.4, 0.4),
+            Cuboid::new(size / 2.0),
+        );
+
+        blank_counter
     };
 
-    ecs.spawn(hr(0.5, 0.5));
-    ecs.spawn(hr(0.5, 2.5));
+    hr(world, 0.5, 0.5);
+    hr(world, 0.5, 2.5);
 
     let equipped_slot = {
-        let slot = slot(
-            1.25,
-            1.0,
-            ecs.spawn(blank_icon()),
-            ecs.spawn(blank_counter()),
-        );
-        dbg!(ecs.spawn(slot))
+        let icon = blank_icon(world);
+        let counter = blank_counter(world);
+        slot(world, 1.25, 1.0, icon, counter)
     };
 
     let mut loose_slots = vec![];
     for y in 0..2 {
         for x in 0..3 {
-            let slot = slot(
+            let icon = blank_icon(world);
+            let counter = blank_counter(world);
+            loose_slots.push(slot(
+                world,
                 3.0 * (x as f32) + 1.0,
                 1.5 * (y as f32) + 3.0,
-                ecs.spawn(blank_icon()),
-                ecs.spawn(blank_counter()),
-            );
-            loose_slots.push(ecs.spawn(slot));
+                icon,
+                counter,
+            ));
         }
     }
 
@@ -499,9 +534,10 @@ impl GuiState {
     pub fn draggable_under(&self, mouse: Vector, world: &World) -> Option<Entity> {
         world
             .ecs
-            .query::<(&Draggable, &graphics::Appearance, &Iso2)>()
+            .query::<(&Draggable, &graphics::Appearance, &PhysHandle)>()
             .iter()
-            .filter_map(|(gui_ent, (_, appearance, iso))| {
+            .filter_map(|(gui_ent, (_, appearance, &PhysHandle(h)))| {
+                let iso = world.phys.collision_object(h)?.position();
                 let rect = match appearance.kind {
                     graphics::AppearanceKind::Color { rectangle, .. } => rectangle,
                     _ => unreachable!(),
@@ -533,6 +569,7 @@ impl GuiState {
     ) {
         let ecs = &world.ecs;
         let l8r = &mut world.l8r;
+        let phys = &mut world.phys;
 
         let mouse_down = mouse[MouseButton::Left].is_down();
 
@@ -542,9 +579,13 @@ impl GuiState {
             let mouse_pos = mouse.pos().into_vector();
 
             if let Some(last) = self.last_mouse_down_pos {
-                let mut iso = ecs.get_mut::<Iso2>(entity).unwrap();
+                let PhysHandle(h) = *ecs.get_mut::<PhysHandle>(entity).unwrap();
+                let obj = phys.get_mut(h).unwrap();
+
+                let mut iso = obj.position().clone();
                 let offset = last - iso.translation.vector;
                 iso.translation.vector = mouse_pos - offset;
+                obj.set_position(iso);
             }
             self.last_mouse_down_pos = Some(mouse_pos);
             self.dragging_ent = Some(entity);

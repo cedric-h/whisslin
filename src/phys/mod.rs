@@ -2,8 +2,8 @@ pub mod aiming;
 pub mod collision;
 pub mod movement;
 
-use crate::World;
-use crate::{Iso2, Vec2};
+use crate::{CollisionWorld, World};
+use crate::{PhysHandle, Vec2};
 
 /// DragTowards moves an Entity towards the supplied location (`goal_loc`) until the
 /// Entity's Iso2's translation's `vector` is within the supplied speed (`speed`) of the
@@ -46,49 +46,81 @@ impl Chase {
 }
 
 #[inline]
-fn drag_goal(loc: &mut Vec2, goal: &Vec2, speed: f32, speed_squared: f32) -> bool {
+/// The result `.is_some()` if progress has been made wrt. the dragging,
+/// and is `Some(true)` if the goal has been reached.
+fn drag_goal(
+    PhysHandle(h): PhysHandle,
+    phys: &mut CollisionWorld,
+    goal: &Vec2,
+    speed: f32,
+    speed_squared: f32,
+) -> Option<bool> {
+    let obj = phys.get_mut(h)?;
+    let mut iso = obj.position().clone();
+    let loc = &mut iso.translation.vector;
+
     let delta = *loc - *goal;
-    if delta.magnitude_squared() < speed_squared {
+    Some(if delta.magnitude_squared() < speed_squared {
         *loc = *goal;
+        obj.set_position_with_prediction(iso, iso);
         true
     } else {
-        *loc -= delta.normalize() * speed;
+        let vel = delta.normalize() * speed;
+        *loc -= vel;
+        obj.set_position_with_prediction(iso.clone(), {
+            iso.translation.vector -= vel;
+            iso
+        });
         false
-    }
+    })
 }
 
 pub struct Velocity(Vec2);
 
 pub fn velocity(world: &mut World) {
-    for (_, (iso, &Velocity(vel))) in &mut world.ecs.query::<(&mut Iso2, &Velocity)>() {
-        iso.translation.vector += vel;
+    let ecs = &world.ecs;
+    let l8r = &mut world.l8r;
+    let phys = &mut world.phys;
+
+    for (_, (PhysHandle(h), &Velocity(vel))) in &mut world.ecs.query::<(&PhysHandle, &Velocity)>() {
+        (|| {
+            let obj = phys.get_mut(*h)?;
+            let mut iso = obj.position().clone();
+            iso.translation.vector += vel;
+            obj.set_position_with_prediction(iso.clone(), {
+                iso.translation.vector += vel;
+                iso
+            });
+
+            Some(())
+        })();
     }
 
-    for (drag_ent, (iso, drag)) in world.ecs.query::<(&mut Iso2, &DragTowards)>().iter() {
-        if drag_goal(
-            &mut iso.translation.vector,
-            &drag.goal_loc,
-            drag.speed,
-            drag.speed_squared,
-        ) {
-            world.l8r.remove_one::<DragTowards>(drag_ent);
+    for (drag_ent, (hnd, drag)) in ecs.query::<(&PhysHandle, &DragTowards)>().iter() {
+        // if the dragging is successful and the goal is reached...
+        if let Some(true) = drag_goal(*hnd, phys, &drag.goal_loc, drag.speed, drag.speed_squared) {
+            l8r.remove_one::<DragTowards>(drag_ent);
         }
     }
 }
 
 pub fn chase(world: &mut World) {
-    for (_, (iso, chase)) in world.ecs.query::<(&mut Iso2, &Chase)>().iter() {
-        let goal_iso = match unsafe { world.ecs.get_unchecked::<Iso2>(chase.goal_ent) } {
-            Ok(iso) => iso,
-            Err(_) => continue,
-        };
-        if drag_goal(
-            &mut iso.translation.vector,
-            &goal_iso.translation.vector,
-            chase.speed,
-            chase.speed_squared,
-        ) {
-            //world.l8r.remove_one::<Chase>(chaser_ent);
-        }
+    let ecs = &world.ecs;
+    //let l8r = &mut world.l8r;
+    let phys = &mut world.phys;
+
+    for (_, (hnd, chase)) in ecs.query::<(&PhysHandle, &Chase)>().iter() {
+        (|| {
+            let goal_loc = {
+                let PhysHandle(goal_h) = *ecs.get::<PhysHandle>(chase.goal_ent).ok()?;
+                phys.collision_object(goal_h)?.position().translation.vector
+            };
+
+            if drag_goal(*hnd, phys, &goal_loc, chase.speed, chase.speed_squared)? {
+                //world.l8r.remove_one::<Chase>(chaser_ent);
+            }
+
+            Some(())
+        })();
     }
 }
