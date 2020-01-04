@@ -20,7 +20,16 @@ pub struct PhysHandle(pub ncollide2d::pipeline::CollisionObjectSlabHandle);
 
 const DIMENSIONS: Vector = Vector { x: 480.0, y: 270.0 };
 const TILE_SIZE: f32 = 16.0;
-const SCALE: f32 = 3.0;
+const SCALE: f32 = 1.0;
+
+pub mod collide {
+    // Collision Groups
+    pub const PLAYER: usize = 1;
+    pub const ENEMY: usize = 2;
+    pub const WORLD: usize = 3;
+    // yeah
+    pub const GUI: usize = 10;
+}
 
 mod config;
 use config::ConfigHandler;
@@ -93,50 +102,7 @@ impl World {
     }
 
     #[inline]
-    fn add_hitbox(&mut self, entity: hecs::Entity, iso: Iso2, cuboid: Cuboid<f32>) -> PhysHandle {
-        self.add_hitbox_grouped(
-            entity,
-            iso,
-            cuboid,
-            CollisionGroups::new().with_membership(&[1]),
-        )
-    }
-
-    #[inline]
-    fn add_hitbox_static(
-        &mut self,
-        entity: hecs::Entity,
-        iso: Iso2,
-        cuboid: Cuboid<f32>,
-    ) -> PhysHandle {
-        self.add_hitbox_grouped(
-            entity,
-            iso,
-            cuboid,
-            CollisionGroups::new()
-                .with_membership(&[2])
-                .with_whitelist(&[1]),
-        )
-    }
-
-    fn add_hitbox_gui(
-        &mut self,
-        entity: hecs::Entity,
-        iso: Iso2,
-        cuboid: Cuboid<f32>,
-    ) -> PhysHandle {
-        self.add_hitbox_grouped(
-            entity,
-            iso,
-            cuboid,
-            CollisionGroups::new()
-                .with_membership(&[3])
-                .with_whitelist(&[]),
-        )
-    }
-
-    #[inline]
-    fn add_hitbox_grouped(
+    fn add_hitbox(
         &mut self,
         entity: hecs::Entity,
         iso: Iso2,
@@ -188,6 +154,18 @@ impl State for Game {
         let mut world = World::new();
 
         let player = config.spawn(&mut world);
+        let player_loc = (|| {
+            let PhysHandle(h) = *world.ecs.get::<PhysHandle>(player).ok()?;
+            Some(
+                world
+                    .phys
+                    .collision_object(h)?
+                    .position()
+                    .translation
+                    .vector,
+            )
+        })()
+        .unwrap();
 
         for i in 0..4 {
             let fence = world.ecs.spawn((
@@ -198,27 +176,48 @@ impl State for Game {
                 },
                 collision::CollisionStatic,
             ));
-            world.add_hitbox_static(
+            world.add_hitbox(
                 fence,
                 Iso2::translation(8.0 + 2.0 * i as f32, 5.25),
                 Cuboid::new(Vec2::new(1.0, 0.2) / 2.0),
+                CollisionGroups::new()
+                    .with_membership(&[collide::WORLD])
+                    .with_whitelist(&[collide::PLAYER, collide::ENEMY]),
             );
         }
 
         const ENEMY_COUNT: usize = 4;
         for i in 0..ENEMY_COUNT {
             let angle = (std::f32::consts::PI * 2.0 / (ENEMY_COUNT as f32)) * (i as f32);
-            let pos = na::UnitComplex::from_angle(angle) * Vec2::repeat(20.0);
+            let loc = player_loc + na::UnitComplex::from_angle(angle) * Vec2::repeat(5.0);
 
-            world.ecs.spawn((
+            let bread = world.ecs.spawn((
                 graphics::Appearance {
                     kind: graphics::AppearanceKind::image("sandwich"),
+                    alignment: graphics::Alignment::Center,
                     ..Default::default()
                 },
-                phys::Chase::new(player, 0.05),
-                //Cuboid::new(Vec2::new(1.0, 0.2) / 2.0),
-                Iso2::new(pos, angle),
+                phys::KnockBack {
+                    groups: CollisionGroups::new()
+                        .with_membership(&[collide::ENEMY])
+                        .with_whitelist(&[collide::PLAYER, collide::ENEMY]),
+                    force_decay: 0.75,
+                    force_magnitude: 0.2,
+                },
+                phys::Charge::new(0.05),
+                phys::LookChase::new(player, 0.025),
+                phys::collision::RigidGroups(
+                    CollisionGroups::new()
+                        .with_membership(&[collide::ENEMY])
+                        .with_blacklist(&[collide::ENEMY, collide::PLAYER]),
+                ),
             ));
+            world.add_hitbox(
+                bread,
+                Iso2::new(loc, angle),
+                Cuboid::new(Vec2::new(1.0, 1.0) / 2.0),
+                CollisionGroups::new().with_membership(&[collide::ENEMY]),
+            );
         }
 
         // Tilemap stuffs
@@ -292,10 +291,11 @@ fn main() {
         "Game",
         dbg!(DIMENSIONS * SCALE),
         Settings {
+            fullscreen: true,
             resize: quicksilver::graphics::ResizeStrategy::IntegerScale {
                 width: 480,
                 height: 270,
-            },
+            }
             ..Settings::default()
         },
     );

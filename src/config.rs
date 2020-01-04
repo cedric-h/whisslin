@@ -70,6 +70,7 @@ impl PlayerConfig {
             player,
             Iso2::new(self.pos, 0.0),
             Cuboid::new(self.size / 2.0),
+            crate::CollisionGroups::new().with_membership(&[crate::collide::PLAYER]),
         );
 
         for InventoryEntry { name, count, flags } in self.inventory.iter() {

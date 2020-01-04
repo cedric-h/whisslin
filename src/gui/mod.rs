@@ -190,10 +190,13 @@ pub fn build_inventory_gui_entities(world: &mut World, parent: Entity) -> Invent
             crate::config::ReloadWithConfig,
         ));
 
-        world.add_hitbox_gui(
+        world.add_hitbox(
             window,
             Iso2::translation(19.0, 1.0),
             Cuboid::new(size / 2.0),
+            crate::CollisionGroups::new()
+                .with_membership(&[crate::collide::GUI])
+                .with_whitelist(&[]),
         );
 
         window
@@ -217,10 +220,13 @@ pub fn build_inventory_gui_entities(world: &mut World, parent: Entity) -> Invent
             crate::config::ReloadWithConfig,
         ));
 
-        world.add_hitbox_gui(
+        world.add_hitbox(
             hr,
             Iso2::translation(x, y - (0.125 / 2.0)),
             Cuboid::new(size / 2.0),
+            crate::CollisionGroups::new()
+                .with_membership(&[crate::collide::GUI])
+                .with_whitelist(&[]),
         );
 
         hr
@@ -236,7 +242,14 @@ pub fn build_inventory_gui_entities(world: &mut World, parent: Entity) -> Invent
             crate::config::ReloadWithConfig,
         ));
 
-        world.add_hitbox_gui(icon, Iso2::translation(0.1, 0.1), Cuboid::new(size / 2.0));
+        world.add_hitbox(
+            icon,
+            Iso2::translation(0.1, 0.1),
+            Cuboid::new(size / 2.0),
+            crate::CollisionGroups::new()
+                .with_membership(&[crate::collide::GUI])
+                .with_whitelist(&[]),
+        );
 
         icon
     };
@@ -250,10 +263,13 @@ pub fn build_inventory_gui_entities(world: &mut World, parent: Entity) -> Invent
             crate::config::ReloadWithConfig,
         ));
 
-        world.add_hitbox_gui(
+        world.add_hitbox(
             blank_counter,
             Iso2::translation(1.4, 0.4),
             Cuboid::new(size / 2.0),
+            crate::CollisionGroups::new()
+                .with_membership(&[crate::collide::GUI])
+                .with_whitelist(&[]),
         );
 
         blank_counter
@@ -287,7 +303,14 @@ pub fn build_inventory_gui_entities(world: &mut World, parent: Entity) -> Invent
             crate::config::ReloadWithConfig,
         ));
 
-        world.add_hitbox_gui(slot, Iso2::translation(x, y), Cuboid::new(size / 2.0));
+        world.add_hitbox(
+            slot,
+            Iso2::translation(x, y),
+            Cuboid::new(size / 2.0),
+            crate::CollisionGroups::new()
+                .with_membership(&[crate::collide::GUI])
+                .with_whitelist(&[]),
+        );
 
         slot
     };
@@ -295,18 +318,12 @@ pub fn build_inventory_gui_entities(world: &mut World, parent: Entity) -> Invent
     hr(world, 0.5, 0.5);
     hr(world, 0.5, 2.5);
 
-    let equipped_slot = {
-        slot(world, 1.25, 1.0)
-    };
+    let equipped_slot = { slot(world, 1.25, 1.0) };
 
     let mut loose_slots = vec![];
     for y in 0..2 {
         for x in 0..3 {
-            loose_slots.push(slot(
-                world,
-                3.0 * (x as f32) + 1.0,
-                1.5 * (y as f32) + 3.0,
-            ));
+            loose_slots.push(slot(world, 3.0 * (x as f32) + 1.0, 1.5 * (y as f32) + 3.0));
         }
     }
 
