@@ -9,6 +9,27 @@ use hecs::Entity;
 /// Walls, fences, mountains, etc. can be considered to be CollisionStatic.
 pub struct CollisionStatic;
 
+/// Assigning this component to an Entity allows you to get finer grained control
+/// over what an Entity can collide with and be forced out of. The CollisionGroups
+/// you pass to `.add_hitbox` control all possible collisions your shape can collide with.
+///
+/// These groups control only what bodies your Entity will be forced out of should they collide.
+/// If these aren't supplied, the collision system will simply default to the CollisionGroups
+/// supplied to `.add_hitbox`.
+pub struct RigidGroups(pub crate::CollisionGroups);
+impl std::ops::Deref for RigidGroups {
+    type Target = crate::CollisionGroups;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl std::ops::DerefMut for RigidGroups {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 /// Records all of the other entities this entity is touching
 pub struct Contacts(pub FxHashSet<Entity>);
 impl Contacts {
@@ -83,17 +104,25 @@ pub fn collision(world: &mut World) {
         }
     });
 
-    for (collided_ent, (Contacts(contacts), &PhysHandle(collided_h))) in ecs
-        .query::<(&Contacts, &PhysHandle)>()
+    for (collided_ent, (Contacts(contacts), &PhysHandle(collided_h), rigid_groups)) in ecs
+        .query::<(&Contacts, &PhysHandle, Option<&RigidGroups>)>()
         .without::<CollisionStatic>()
         .iter()
     {
         let mut contacted_displacement = Vec2::zeros();
 
-        for other_ent in contacts.iter() {
-            let PhysHandle(other_h) = *ecs.get::<PhysHandle>(*other_ent).unwrap_or_else(|e| {
+        for &other_ent in contacts.iter() {
+            let PhysHandle(other_h) = *ecs.get::<PhysHandle>(other_ent).unwrap_or_else(|e| {
                 panic!("Contacted Entity[{:?}] has no PhysHandle: {}", other_ent, e)
             });
+
+            if let (Ok(other_rigid_groups), Some(rigid_groups)) =
+                (ecs.get::<RigidGroups>(other_ent), rigid_groups)
+            {
+                if !rigid_groups.can_interact_with_groups(&other_rigid_groups) {
+                    continue;
+                }
+            };
 
             if let Some((_, _, _, contacts)) = phys.contact_pair(collided_h, other_h, true) {
                 let deepest = contacts.deepest_contact().unwrap().contact;

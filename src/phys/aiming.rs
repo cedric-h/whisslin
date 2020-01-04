@@ -387,10 +387,13 @@ pub fn aiming(world: &mut World, window: &mut Window, cfg: &Config) {
                     let PhysHandle(wep_h) = *ecs
                         .get::<PhysHandle>(wep_ent)
                         .map_err(|_| l8r.l8r(move |world| {
-                            world.add_hitbox_gui(
+                            world.add_hitbox(
                                 wep_ent,
                                 frame_iso,
-                                ncollide2d::shape::Cuboid::new(Vec2::new(0.1, 1.0))
+                                ncollide2d::shape::Cuboid::new(Vec2::new(0.1, 1.0)),
+                                crate::CollisionGroups::new()
+                                    .with_membership(&[crate::collide::WORLD])
+                                    .with_whitelist(&[]),
                             );
                         }))
                         .ok()?;
