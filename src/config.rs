@@ -134,17 +134,19 @@ pub struct WeaponConfig {
     pub bottom_padding: f32,
 
     // projectile
-    pub projectile_speed: f32,
+    pub force_magnitude: f32,
+    pub force_decay: f32,
 }
 impl WeaponConfig {
     pub fn spawn(&self, world: &mut crate::World) -> hecs::Entity {
-        use crate::{aiming, graphics};
+        use crate::{aiming, combat, graphics};
         world.ecs.spawn((
             graphics::Appearance {
                 kind: graphics::AppearanceKind::image(self.image.clone()),
-                z_offset: 90.0,
+                z_offset: 0.5,
                 ..Default::default()
             },
+            combat::Hurtful,
             aiming::Weapon {
                 // positioning
                 bottom_padding: self.bottom_padding,
@@ -156,7 +158,8 @@ impl WeaponConfig {
                 animations: self.image.clone(),
 
                 // projectile
-                speed: self.projectile_speed,
+                force_magnitude: self.force_magnitude,
+                force_decay: self.force_decay,
             },
             #[cfg(feature = "hot-config")]
             ReloadWithConfig,

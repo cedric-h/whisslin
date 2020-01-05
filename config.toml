@@ -35,7 +35,8 @@ equip_keyframes = [
 offset = [0.115, -0.385]
 bottom_padding = 0.325
 # projectile
-projectile_speed = 2.125
+force_magnitude = 2.125
+force_decay = 0.75
 
 [weapons.flower_power]
 # appearance
@@ -53,7 +54,9 @@ equip_keyframes = [
 offset = [0.115, -0.385]
 bottom_padding = 0.325
 # projectile
-projectile_speed = 2.125
+force_magnitude = 2.125
+force_decay = 0.75
+
 [player]
 speed = 0.1
 image = "creep"
