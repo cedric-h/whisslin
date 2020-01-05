@@ -27,6 +27,7 @@ pub mod collide {
     pub const PLAYER: usize = 1;
     pub const WEAPON: usize = 2;
     pub const ENEMY: usize = 3;
+    pub const PARTICLE: usize = 4;
 
     /// Fences, Terrain, etc.
     pub const WORLD: usize = 5;
@@ -147,6 +148,7 @@ struct Game {
     images: ImageMap,
     font: Asset<Font>,
     config: ConfigHandler,
+    particle_manager: graphics::particle::Manager,
     gui: gui::GuiState,
     sprite_sheet_animation_failed: bool,
 }
@@ -206,6 +208,17 @@ impl State for Game {
                     ..Default::default()
                 },
                 combat::health::Health::new(1),
+                combat::DamageReceivedParticleEmitter(graphics::particle::Emitter {
+                    duration: 50,
+                    particle_count: (2..=3).into(),
+
+                    force_magnitude: (0.4..=0.6).into(),
+                    force_decay: (0.7..=0.8).into(),
+                    color: [(0.65..0.85).into(), (0.0..0.1).into(), (0.0..0.1).into(), (1.0..=1.0).into()],
+                    size: [(0.1..0.2).into(), (0.1..0.4).into()],
+                    square: true,
+                    ..Default::default()
+                }),
                 phys::collision::RigidGroups(base_group.with_blacklist(&knock_back_not_collide)),
                 phys::Charge::new(0.05),
                 phys::LookChase::new(player, 0.025),
@@ -231,6 +244,7 @@ impl State for Game {
             images,
             font: Asset::new(Font::load("min.ttf")),
             config,
+            particle_manager: Default::default(),
             gui: gui::GuiState::new(),
             last_render: Instant::now(),
             sprite_sheet_animation_failed: false,
@@ -285,6 +299,11 @@ impl State for Game {
         let scheduled_world_edits = self.world.l8r.drain();
         L8r::now(scheduled_world_edits, &mut self.world);
 
+        self.particle_manager.emit_particles(&mut self.world);
+
+        let scheduled_world_edits = self.world.l8r.drain();
+        L8r::now(scheduled_world_edits, &mut self.world);
+
         phys::collision::clear_dead_collision_objects(&mut self.world);
         clear_dead(&mut self.world);
 
@@ -300,6 +319,7 @@ fn main() {
         "Game",
         dbg!(DIMENSIONS * SCALE),
         Settings {
+            //multisampling: Some(16),
             resize: quicksilver::graphics::ResizeStrategy::IntegerScale {
                 width: 480,
                 height: 270,
