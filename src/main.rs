@@ -1,4 +1,4 @@
-#![feature(array_value_iter)]
+// #![feature(array_value_iter)]
 
 use nalgebra as na;
 use ncollide2d::shape::Cuboid;
