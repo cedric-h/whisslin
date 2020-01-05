@@ -125,8 +125,10 @@ pub fn hurtful_damage(world: &mut crate::World) {
                     let mut emitter = particles.0.clone();
                     emitter.offset_direction_bounds(deepest.normal);
 
+                    let fade = crate::graphics::fade::Fade::no_visual(emitter.duration);
+
                     l8r.l8r(move |world| {
-                        let emitter_ent = world.ecs.spawn((emitter,));
+                        let emitter_ent = world.ecs.spawn((emitter, fade));
                         world.add_hitbox(
                             emitter_ent,
                             crate::Iso2::new(deepest.world1.coords, 0.0),

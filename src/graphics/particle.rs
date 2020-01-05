@@ -33,7 +33,7 @@ pub fn direction_bounds_from_degrees(a: f32, b: f32) -> (Unit<Vec2>, Unit<Vec2>)
 #[derive(Clone)]
 pub struct Emitter {
     /// For how many frames should this Particle Emitter emit particles?
-    pub duration: u16,
+    pub duration: usize,
 
     /// Between what two directions should the generated particles.
     /// If None, a completely random direction is supplied.
@@ -46,9 +46,10 @@ pub struct Emitter {
     // particle configuration
     pub force_magnitude: Uniform<f32>,
     pub force_decay: Uniform<f32>,
+    pub particle_duration: Uniform<usize>,
+    pub particle_duration_fade_after: Uniform<usize>,
     pub color: [Uniform<f32>; 4],
     pub size: [Uniform<f32>; 2],
-
     /// If true, the value generated for the particle's size on the x axis
     /// will also be used for its size on the y axis.
     pub square: bool,
@@ -63,6 +64,8 @@ impl Default for Emitter {
             // the particles themselves
             force_decay: (0.75..=0.75).into(),
             force_magnitude: (1.0..=1.0).into(),
+            particle_duration: (100..=100).into(),
+            particle_duration_fade_after: (25..=25).into(),
             color: [(0.2..1.0).into(), (0.0..=0.0).into(), (0.0..=0.0).into(), (1.0..=1.0).into()],
             size: [(0.1..0.4).into(), (0.1..0.4).into()],
             square: false
@@ -194,6 +197,10 @@ impl Manager {
                         vec: *dir * emitter.force_magnitude.sample(rng),
                         decay: emitter.force_decay.sample(rng),
                     },
+                    graphics::fade::Fade {
+                        duration: emitter.particle_duration.sample(rng),
+                        fade_after: emitter.particle_duration_fade_after.sample(rng)
+                    }
                 );
 
                 l8r.l8r(move |world: &mut crate::World| {

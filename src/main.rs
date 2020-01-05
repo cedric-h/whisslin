@@ -82,6 +82,10 @@ impl L8r {
         self.l8r(move |world| drop(world.ecs.spawn(components_bundle)))
     }
 
+    pub fn despawn(&mut self, entity: hecs::Entity) {
+        self.l8r(move |world| drop(world.ecs.despawn(entity)))
+    }
+
     pub fn drain(&mut self) -> Vec<Box<dyn FnOnce(&mut World)>> {
         self.0.drain(..).collect::<Vec<_>>()
     }
@@ -278,6 +282,8 @@ impl State for Game {
     fn update(&mut self, window: &mut Window) -> Result<()> {
         #[cfg(feature = "hot-config")]
         self.config.reload(&mut self.world);
+
+        graphics::fade::fade(&mut self.world);
 
         movement::movement(&mut self.world, window);
         phys::velocity(&mut self.world);
