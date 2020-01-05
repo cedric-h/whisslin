@@ -448,6 +448,14 @@ pub fn aiming(world: &mut World, window: &mut Window, cfg: &Config) {
                 ),
             );
 
+            l8r.insert_one(
+                wep_ent,
+                crate::graphics::fade::Fade { 
+                    duration: 100,
+                    fade_after: 25
+                }
+            );
+
             let mut wep_appearance = ecs.get_mut::<graphics::Appearance>(wep_ent).ok()?;
             wep_appearance.alignment = graphics::Alignment::Center;
             wep_appearance.z_offset = -1.5;

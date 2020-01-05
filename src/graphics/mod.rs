@@ -3,6 +3,7 @@ pub mod colors;
 pub mod images;
 pub mod particle;
 pub mod sprite_sheet;
+pub mod fade;
 use images::ImageMap;
 #[cfg(feature = "hitbox-outlines")]
 mod hitbox_outlines;
@@ -16,7 +17,7 @@ use ncollide2d::shape::Cuboid;
 use quicksilver::{
     geom::{Rectangle, Transform, Vector},
     graphics::{
-        Background::{Col, Img},
+        Background::*,
         Color, Font, FontStyle, Image, View,
     },
     lifecycle::{Asset, Window},
@@ -140,6 +141,8 @@ pub struct Appearance {
     pub z_offset: f32,
     /// Render sprite flipped on X axis.
     pub flip_x: bool,
+    /// Domain [0.0, 1.0]
+    pub transparency: Option<f32>,
 }
 impl Default for Appearance {
     fn default() -> Self {
@@ -151,6 +154,7 @@ impl Default for Appearance {
             alignment: Alignment::default(),
             z_offset: 0.0,
             flip_x: false,
+            transparency: None,
         }
     }
 }
@@ -176,7 +180,7 @@ pub fn render(
 
         match &appearance.kind {
             AppearanceKind::Color {
-                color,
+                mut color,
                 rectangle: rect,
             } => {
                 let offset = appearance.alignment.offset(rect, world);
@@ -188,9 +192,13 @@ pub fn render(
                     transform = transform * Transform::scale((-1, 1));
                 }
 
+                if let Some(transparency) = appearance.transparency {
+                    color.a = transparency;
+                }
+
                 window.draw_ex(
                     rect,
-                    Col(*color),
+                    Col(color),
                     transform,
                     loc.y + offset.y + appearance.z_offset,
                 );
@@ -209,7 +217,11 @@ pub fn render(
 
                     window.draw_ex(
                         &rect,
-                        Img(&img),
+                        if let Some(transparency) = appearance.transparency {
+                            Blended(&img, Color { r: 0.0, g: 0.0, b: 0.0, a: transparency })
+                        } else {
+                            Img(&img)
+                        },
                         transform,
                         loc.y + offset.y + appearance.z_offset,
                     );
