@@ -122,6 +122,17 @@ impl PlayerConfig {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct RangeConfig<T> {
+    pub lo: T,
+    pub hi: T,
+}
+impl<T> From<std::ops::Range<T>> for RangeConfig<T> {
+    fn from(other: std::ops::Range<T>) -> RangeConfig<T> {
+        RangeConfig { lo: other.start, hi: other.end }
+    }
+}
+
+#[derive(Debug, Deserialize)]
 pub struct WeaponConfig {
     // appearance
     pub image: String,

@@ -75,7 +75,9 @@ pub fn collision(world: &mut World) {
                 let ent_a = ent_from_handle($a);
                 let ent_b = ent_from_handle($b);
 
-                std::array::IntoIter::new([(ent_a, ent_b), (ent_b, ent_a)])
+                //std::array::IntoIter::new([(ent_a, ent_b), (ent_b, ent_a)])
+                vec![(ent_a, ent_b), (ent_b, ent_a)]
+                    .into_iter()
                     .map(|(ent, other_ent)| {
                         (
                             ecs.get_mut::<Contacts>(ent).unwrap_or_else(|e| {
