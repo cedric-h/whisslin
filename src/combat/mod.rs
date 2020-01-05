@@ -1,6 +1,8 @@
 pub mod health;
 pub use health::Health;
 
+use crate::PhysHandle;
+
 /// Things with the Hurtful component remove Health from the Entities in their Contacts.
 ///
 ///
@@ -42,7 +44,6 @@ impl Default for Hurtful {
         }
     }
 }
-
 impl Hurtful {
     fn damage(&self, speed: f32) -> Health {
         let calculated = (self.raw_damage * self.kind.damage_coefficient(speed)).round() as usize;
@@ -50,13 +51,16 @@ impl Hurtful {
     }
 }
 
+/// A particle::Emitter component that is assigned to the Entity that receives damage when damage is dealt.
+pub struct DamageReceivedParticleEmitter(pub crate::graphics::particle::Emitter);
+
 /// Control when your Entity is Hurtful
 pub enum HurtfulKind {
     /// Do damage only if moving quickly and collision occurs with something.
     Ram {
         /// Signifies how much the speed should impact the damage.
         ///
-        /// Supplying 0.0 here means that the weapon will always deal 0.0 damage.
+        /// Supplying 0.0 here means that the weapon will always deal 0 damage.
         ///
         /// Supplying 1.0 here means that if the speed is 3.0, the damage dealt will be multiplied by 3.
         ///
@@ -84,9 +88,16 @@ pub fn hurtful_damage(world: &mut crate::World) {
     use crate::phys::collision;
 
     let ecs = &world.ecs;
+    let phys = &world.phys;
+    let l8r = &mut world.l8r;
 
-    for (_, (collision::Contacts(contacts), hurtful, force)) in ecs
-        .query::<(&collision::Contacts, &Hurtful, Option<&phys::Force>)>()
+    for (_, (collision::Contacts(contacts), &PhysHandle(h), hurtful, force)) in ecs
+        .query::<(
+            &collision::Contacts,
+            &PhysHandle,
+            &Hurtful,
+            Option<&phys::Force>,
+        )>()
         .iter()
     {
         let speed = force.map(|f| f.vec.magnitude()).unwrap_or(0.0);
@@ -98,6 +109,36 @@ pub fn hurtful_damage(world: &mut crate::World) {
         for &touching_ent in contacts.iter() {
             if let Ok(mut hp) = ecs.get_mut::<Health>(touching_ent) {
                 *hp -= hurtful.damage(speed);
+
+                (|| {
+                    let particles = ecs
+                        .get::<DamageReceivedParticleEmitter>(touching_ent)
+                        .ok()?;
+                    let PhysHandle(touching_h) = *ecs.get::<PhysHandle>(touching_ent).ok()?;
+
+                    let (_, _, _, contacts) = phys.contact_pair(h, touching_h, true)?;
+                    let deepest = contacts
+                        .deepest_contact()
+                        .expect("no deepest contact!")
+                        .contact;
+
+                    let mut emitter = particles.0.clone();
+                    emitter.offset_direction_bounds(deepest.normal);
+
+                    l8r.l8r(move |world| {
+                        let emitter_ent = world.ecs.spawn((emitter,));
+                        world.add_hitbox(
+                            emitter_ent,
+                            crate::Iso2::new(deepest.world1.coords, 0.0),
+                            ncollide2d::shape::Cuboid::new(crate::Vec2::repeat(1.0)),
+                            crate::CollisionGroups::new()
+                                .with_membership(&[])
+                                .with_whitelist(&[])
+                        );
+                    });
+
+                    Some(())
+                })();
             }
         }
     }

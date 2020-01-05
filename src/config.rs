@@ -51,7 +51,6 @@ impl PlayerConfig {
     ) -> hecs::Entity {
         use crate::Iso2;
         use crate::{aiming, graphics, items, movement, phys};
-        use ncollide2d::shape::Cuboid;
 
         let player = world.ecs.spawn((
             graphics::Appearance {
@@ -69,7 +68,7 @@ impl PlayerConfig {
         world.add_hitbox(
             player,
             Iso2::new(self.pos, 0.0),
-            Cuboid::new(self.size / 2.0),
+            ncollide2d::shape::Cuboid::new(self.size / 2.0),
             crate::CollisionGroups::new().with_membership(&[crate::collide::PLAYER]),
         );
 
@@ -128,7 +127,10 @@ pub struct RangeConfig<T> {
 }
 impl<T> From<std::ops::Range<T>> for RangeConfig<T> {
     fn from(other: std::ops::Range<T>) -> RangeConfig<T> {
-        RangeConfig { lo: other.start, hi: other.end }
+        RangeConfig {
+            lo: other.start,
+            hi: other.end,
+        }
     }
 }
 
