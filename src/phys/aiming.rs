@@ -224,8 +224,12 @@ pub struct Weapon {
 
     // projectile
     pub force_magnitude: f32,
-    /// Range [0, 1] unless you want your Weapon to get exponentially faster as time passes.
+    /// Range [0, 1] unless you want your Weapon to get exponentially faster each frame.
     pub force_decay: f32,
+
+    // side effects
+    pub player_knock_back_force: f32,
+    pub player_knock_back_decay: f32,
 }
 impl Default for Weapon {
     fn default() -> Self {
@@ -242,6 +246,10 @@ impl Default for Weapon {
             // projectile
             force_magnitude: 1.0,
             force_decay: 1.0,
+
+            // side effects
+            player_knock_back_force: 0.5,
+            player_knock_back_decay: 0.75,
         }
     }
 }
@@ -413,6 +421,15 @@ pub fn aiming(world: &mut World, window: &mut Window, cfg: &Config) {
             // cut off ties between weapon/player
             l8r.insert_one(wielder_ent, crate::items::InventoryConsumeEquipped);
             l8r.remove_one::<super::Chase>(wep_ent);
+
+            // side effect! (knockback)
+            l8r.insert_one(
+                wielder_ent,
+                super::Force::new(
+                    delta.into_inner() * -weapon.player_knock_back_force,
+                    weapon.player_knock_back_decay,
+                ),
+            );
 
             // the spear needs to go forward and run into things now.
             //

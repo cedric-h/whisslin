@@ -1,6 +1,7 @@
 #[allow(dead_code)]
 pub mod colors;
 pub mod images;
+pub mod particle;
 pub mod sprite_sheet;
 use images::ImageMap;
 #[cfg(feature = "hitbox-outlines")]

@@ -136,17 +136,37 @@ pub struct WeaponConfig {
     // projectile
     pub force_magnitude: f32,
     pub force_decay: f32,
+    pub minimum_speed_to_damage: f32,
+    pub speed_damage_coefficient: f32,
+    pub damage: f32,
+    pub minimum_damage: usize,
+
+    // side effects
+    pub player_knock_back_force: f32,
+    pub player_knock_back_decay: f32,
 }
 impl WeaponConfig {
     pub fn spawn(&self, world: &mut crate::World) -> hecs::Entity {
-        use crate::{aiming, combat, graphics};
+        use crate::{collide, combat, graphics, phys, phys::aiming};
         world.ecs.spawn((
             graphics::Appearance {
                 kind: graphics::AppearanceKind::image(self.image.clone()),
                 z_offset: 0.5,
                 ..Default::default()
             },
-            combat::Hurtful,
+            phys::collision::RigidGroups(
+                crate::CollisionGroups::new()
+                    .with_membership(&[collide::WEAPON])
+                    .with_blacklist(&[collide::PLAYER, collide::ENEMY]),
+            ),
+            combat::Hurtful {
+                raw_damage: self.damage,
+                minimum_speed: self.minimum_speed_to_damage,
+                kind: combat::HurtfulKind::Ram {
+                    speed_damage_coefficient: self.speed_damage_coefficient,
+                },
+                minimum_damage: self.minimum_damage,
+            },
             aiming::Weapon {
                 // positioning
                 bottom_padding: self.bottom_padding,
@@ -160,6 +180,10 @@ impl WeaponConfig {
                 // projectile
                 force_magnitude: self.force_magnitude,
                 force_decay: self.force_decay,
+
+                // side effects
+                player_knock_back_force: self.player_knock_back_force,
+                player_knock_back_decay: self.player_knock_back_decay,
             },
             #[cfg(feature = "hot-config")]
             ReloadWithConfig,
