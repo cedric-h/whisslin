@@ -20,23 +20,28 @@ pub struct PhysHandle(pub ncollide2d::pipeline::CollisionObjectSlabHandle);
 
 const DIMENSIONS: Vector = Vector { x: 480.0, y: 270.0 };
 const TILE_SIZE: f32 = 16.0;
-const SCALE: f32 = 1.0;
+const SCALE: f32 = 2.0;
 
+/// Collision Group Constants
 pub mod collide {
-    // Collision Groups
     pub const PLAYER: usize = 1;
-    pub const ENEMY: usize = 2;
-    pub const WORLD: usize = 3;
+    pub const WEAPON: usize = 2;
+    pub const ENEMY: usize = 3;
+
+    /// Fences, Terrain, etc.
+    pub const WORLD: usize = 5;
+
     // yeah
     pub const GUI: usize = 10;
 }
 
+mod combat;
 mod config;
-use config::ConfigHandler;
 mod farm;
 mod gui;
 mod items;
 mod phys;
+use config::ConfigHandler;
 mod tilemap;
 use phys::{aiming, collision, movement};
 mod graphics;
@@ -191,32 +196,30 @@ impl State for Game {
             let angle = (std::f32::consts::PI * 2.0 / (ENEMY_COUNT as f32)) * (i as f32);
             let loc = player_loc + na::UnitComplex::from_angle(angle) * Vec2::repeat(5.0);
 
+            let base_group = CollisionGroups::new().with_membership(&[collide::ENEMY]);
+            let knock_back_not_collide = [collide::ENEMY, collide::PLAYER];
+
             let bread = world.ecs.spawn((
                 graphics::Appearance {
                     kind: graphics::AppearanceKind::image("sandwich"),
                     alignment: graphics::Alignment::Center,
                     ..Default::default()
                 },
+                combat::health::Health::new(1),
+                phys::collision::RigidGroups(base_group.with_blacklist(&knock_back_not_collide)),
+                phys::Charge::new(0.05),
+                phys::LookChase::new(player, 0.025),
                 phys::KnockBack {
-                    groups: CollisionGroups::new()
-                        .with_membership(&[collide::ENEMY])
-                        .with_whitelist(&[collide::PLAYER, collide::ENEMY]),
+                    groups: base_group.with_whitelist(&knock_back_not_collide),
                     force_decay: 0.75,
                     force_magnitude: 0.2,
                 },
-                phys::Charge::new(0.05),
-                phys::LookChase::new(player, 0.025),
-                phys::collision::RigidGroups(
-                    CollisionGroups::new()
-                        .with_membership(&[collide::ENEMY])
-                        .with_blacklist(&[collide::ENEMY, collide::PLAYER]),
-                ),
             ));
             world.add_hitbox(
                 bread,
                 Iso2::new(loc, angle),
                 Cuboid::new(Vec2::new(1.0, 1.0) / 2.0),
-                CollisionGroups::new().with_membership(&[collide::ENEMY]),
+                base_group,
             );
         }
 
@@ -276,8 +279,14 @@ impl State for Game {
             aiming::aiming(&mut self.world, window, &self.config);
         }
 
+        combat::hurtful_damage(&mut self.world);
+        combat::health::remove_out_of_health(&mut self.world);
+
         let scheduled_world_edits = self.world.l8r.drain();
         L8r::now(scheduled_world_edits, &mut self.world);
+
+        phys::collision::clear_dead_collision_objects(&mut self.world);
+        clear_dead(&mut self.world);
 
         gui::inventory_events(&mut self.world, &mut self.images);
         items::inventory_inserts(&mut self.world);
@@ -291,12 +300,28 @@ fn main() {
         "Game",
         dbg!(DIMENSIONS * SCALE),
         Settings {
-            fullscreen: true,
             resize: quicksilver::graphics::ResizeStrategy::IntegerScale {
                 width: 480,
                 height: 270,
-            }
+            },
             ..Settings::default()
         },
     );
+}
+
+pub struct Dead;
+
+pub fn clear_dead(world: &mut World) {
+    let to_kill = world
+        .ecs
+        .query::<&Dead>()
+        .iter()
+        .map(|(ent, _)| ent)
+        .collect::<Vec<hecs::Entity>>();
+    to_kill.into_iter().for_each(|ent| {
+        world
+            .ecs
+            .despawn(ent)
+            .unwrap_or_else(|e| panic!("Couldn't kill Dead[{:?}]: {}", ent, e))
+    });
 }

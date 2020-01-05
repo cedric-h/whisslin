@@ -151,7 +151,8 @@ pub fn velocity(world: &mut World) {
             .ecs
             .query::<(&PhysHandle, &KnockBack, &collision::Contacts)>()
     {
-        let loc = phys.collision_object(h)
+        let loc = phys
+            .collision_object(h)
             .unwrap_or_else(|| {
                 panic!(
                     "Entity[{:?}] has PhysHandle[{:?}] but no Collision Object!",
@@ -178,9 +179,15 @@ pub fn velocity(world: &mut World) {
                         )
                     });
 
-                if knock_back.groups.can_interact_with_groups(o_obj.collision_groups()) { 
+                if knock_back
+                    .groups
+                    .can_interact_with_groups(o_obj.collision_groups())
+                {
                     if let Some((_, _, _, contacts)) = phys.contact_pair(h, o_h, true) {
-                        let deepest = contacts.deepest_contact().expect("No deepest contact!").contact;
+                        let deepest = contacts
+                            .deepest_contact()
+                            .expect("No deepest contact!")
+                            .contact;
                         let delta = (o_obj.position().translation.vector - loc).normalize();
 
                         // multiplying the magnitude of the force by this should allow us to make

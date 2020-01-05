@@ -112,21 +112,21 @@ pub fn collision(world: &mut World) {
         let mut contacted_displacement = Vec2::zeros();
 
         for &other_ent in contacts.iter() {
-            let PhysHandle(other_h) = *ecs.get::<PhysHandle>(other_ent).unwrap_or_else(|e| {
-                panic!("Contacted Entity[{:?}] has no PhysHandle: {}", other_ent, e)
-            });
+            // if the recorded contact is with an entity that can't be found,
+            // just ignore it, they've probably been deleted or something.
+            if let Ok(PhysHandle(other_h)) = ecs.get::<PhysHandle>(other_ent).map(|x| *x) {
+                if let (Ok(other_rigid_groups), Some(rigid_groups)) =
+                    (ecs.get::<RigidGroups>(other_ent), rigid_groups)
+                    {
+                        if !rigid_groups.can_interact_with_groups(&other_rigid_groups) {
+                            continue;
+                        }
+                    };
 
-            if let (Ok(other_rigid_groups), Some(rigid_groups)) =
-                (ecs.get::<RigidGroups>(other_ent), rigid_groups)
-            {
-                if !rigid_groups.can_interact_with_groups(&other_rigid_groups) {
-                    continue;
+                if let Some((_, _, _, contacts)) = phys.contact_pair(collided_h, other_h, true) {
+                    let deepest = contacts.deepest_contact().unwrap().contact;
+                    contacted_displacement -= deepest.normal.into_inner() * deepest.depth;
                 }
-            };
-
-            if let Some((_, _, _, contacts)) = phys.contact_pair(collided_h, other_h, true) {
-                let deepest = contacts.deepest_contact().unwrap().contact;
-                contacted_displacement -= deepest.normal.into_inner() * deepest.depth;
             }
         }
 
@@ -141,4 +141,17 @@ pub fn collision(world: &mut World) {
         iso.translation.vector += contacted_displacement;
         obj.set_position(iso);
     }
+}
+
+/// Remove the Collision Objects of dead Entities from the CollisionWorld
+pub fn clear_dead_collision_objects(world: &mut World) {
+    let ecs = &world.ecs;
+    let phys = &mut world.phys;
+
+    phys.remove(
+        &ecs.query::<(&PhysHandle, &crate::Dead)>()
+            .iter()
+            .map(|(_, (&PhysHandle(h), _))| h)
+            .collect::<Vec<_>>(),
+    );
 }
