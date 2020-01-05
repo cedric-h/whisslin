@@ -117,11 +117,11 @@ pub fn collision(world: &mut World) {
             if let Ok(PhysHandle(other_h)) = ecs.get::<PhysHandle>(other_ent).map(|x| *x) {
                 if let (Ok(other_rigid_groups), Some(rigid_groups)) =
                     (ecs.get::<RigidGroups>(other_ent), rigid_groups)
-                    {
-                        if !rigid_groups.can_interact_with_groups(&other_rigid_groups) {
-                            continue;
-                        }
-                    };
+                {
+                    if !rigid_groups.can_interact_with_groups(&other_rigid_groups) {
+                        continue;
+                    }
+                };
 
                 if let Some((_, _, _, contacts)) = phys.contact_pair(collided_h, other_h, true) {
                     let deepest = contacts.deepest_contact().unwrap().contact;

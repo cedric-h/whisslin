@@ -68,9 +68,9 @@ pub struct KnockBack {
 /// is only temporary, eventually fading away.
 #[derive(Clone)]
 pub struct Force {
-    vec: Vec2,
+    pub vec: Vec2,
     /// Domain [0, 1] unless you want the velocity to increase exponentially :thinking:
-    decay: f32,
+    pub decay: f32,
 }
 impl Force {
     pub fn new(vec: Vec2, decay: f32) -> Self {
@@ -222,7 +222,7 @@ pub fn velocity(world: &mut World) {
                 iso
             });
 
-            if force.decay < 0.005 {
+            if force.vec.magnitude_squared() < 0.0005 {
                 l8r.remove_one::<Force>(force_ent);
             }
 
