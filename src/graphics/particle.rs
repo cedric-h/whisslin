@@ -17,19 +17,6 @@ pub fn direction_bounds_from_degrees(a: f32, b: f32) -> (Unit<Vec2>, Unit<Vec2>)
 
 /// Generates some particles at the location of the Entity this Component is associated
 /// with for the given duration, sending them off in a direction specified by the bounds.
-///
-/// ```rs
-/// // Generate one particle during one frame only and allow it to go off in any direction.
-/// let my_emitter = Emitter {
-///     duration: 1,
-///     particle_count: (1..=1).into(),
-///     direction_bounds: None,
-///     force_decay: (0.75..=0.75).into(),
-///     force_magnitude: (1.0..=1.0).into(),
-/// };
-///
-/// assert_eq!(my_emitter, Default::default());
-/// ```
 #[derive(Clone)]
 pub struct Emitter {
     /// For how many frames should this Particle Emitter emit particles?
@@ -66,9 +53,14 @@ impl Default for Emitter {
             force_magnitude: (1.0..=1.0).into(),
             particle_duration: (100..=100).into(),
             particle_duration_fade_after: (25..=25).into(),
-            color: [(0.2..1.0).into(), (0.0..=0.0).into(), (0.0..=0.0).into(), (1.0..=1.0).into()],
+            color: [
+                (0.2..1.0).into(),
+                (0.0..=0.0).into(),
+                (0.0..=0.0).into(),
+                (1.0..=1.0).into(),
+            ],
             size: [(0.1..0.4).into(), (0.1..0.4).into()],
-            square: false
+            square: false,
         }
     }
 }
@@ -199,8 +191,8 @@ impl Manager {
                     },
                     graphics::fade::Fade {
                         duration: emitter.particle_duration.sample(rng),
-                        fade_after: emitter.particle_duration_fade_after.sample(rng)
-                    }
+                        fade_after: emitter.particle_duration_fade_after.sample(rng),
+                    },
                 );
 
                 l8r.l8r(move |world: &mut crate::World| {

@@ -212,17 +212,35 @@ impl State for Game {
                     ..Default::default()
                 },
                 combat::health::Health::new(1),
+                /*
                 combat::DamageReceivedParticleEmitter(graphics::particle::Emitter {
                     duration: 50,
                     particle_count: (2..=3).into(),
-
+                    // particle config
                     force_magnitude: (0.4..=0.6).into(),
                     force_decay: (0.7..=0.8).into(),
-                    color: [(0.65..0.85).into(), (0.0..0.1).into(), (0.0..0.1).into(), (1.0..=1.0).into()],
+                    color: [
+                        (0.65..0.85).into(),
+                        (0.0..0.1).into(),
+                        (0.0..0.1).into(),
+                        (1.0..=1.0).into(),
+                    ],
                     size: [(0.1..0.2).into(), (0.1..0.4).into()],
                     square: true,
                     ..Default::default()
-                }),
+                }),*/
+                combat::DamageReceivedParticleEmitter(toml::from_str::<config::ParticleEmitterConfig>(r#"
+                    duration = 50
+                    particle_count = "2..=3"
+                    # particle config
+                    force_magnitude = "0.4..=0.6"
+                    force_decay = "0.7..=0.8"
+                    particle_duration = "100"
+                    particle_duration_fade_after = "25"
+                    color = ["0.65..0.85", "0.0..0.1", "0.0..0.1", "1.0"]
+                    size = ["0.1..0.2", "0.1..0.4"]
+                    square = true
+                "#).unwrap().into_emitter()),
                 phys::collision::RigidGroups(base_group.with_blacklist(&knock_back_not_collide)),
                 phys::Charge::new(0.05),
                 phys::LookChase::new(player, 0.025),

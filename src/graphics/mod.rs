@@ -1,9 +1,9 @@
 #[allow(dead_code)]
 pub mod colors;
+pub mod fade;
 pub mod images;
 pub mod particle;
 pub mod sprite_sheet;
-pub mod fade;
 use images::ImageMap;
 #[cfg(feature = "hitbox-outlines")]
 mod hitbox_outlines;
@@ -16,10 +16,7 @@ use hecs::Entity;
 use ncollide2d::shape::Cuboid;
 use quicksilver::{
     geom::{Rectangle, Transform, Vector},
-    graphics::{
-        Background::*,
-        Color, Font, FontStyle, Image, View,
-    },
+    graphics::{Background::*, Color, Font, FontStyle, Image, View},
     lifecycle::{Asset, Window},
     Result,
 };
@@ -218,7 +215,15 @@ pub fn render(
                     window.draw_ex(
                         &rect,
                         if let Some(transparency) = appearance.transparency {
-                            Blended(&img, Color { r: 0.0, g: 0.0, b: 0.0, a: transparency })
+                            Blended(
+                                &img,
+                                Color {
+                                    r: 0.0,
+                                    g: 0.0,
+                                    b: 0.0,
+                                    a: transparency,
+                                },
+                            )
                         } else {
                             Img(&img)
                         },

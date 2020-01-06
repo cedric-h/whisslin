@@ -120,16 +120,76 @@ impl PlayerConfig {
     }
 }
 
-#[derive(Debug, Deserialize)]
-pub struct RangeConfig<T> {
-    pub lo: T,
-    pub hi: T,
+use rand::distributions::uniform::{Uniform, SampleUniform};
+
+pub fn uniform_from_string<F: Clone + SampleUniform + std::str::FromStr>(
+    input: &str,
+) -> Uniform<F>
+where <F as std::str::FromStr>::Err: std::fmt::Display {
+    let find_in = |key| {
+        input.find(key).map(|_| {
+            let mut nums = input.split(key).map(|n| {
+                n.parse::<F>().unwrap_or_else(|e| {
+                    panic!("Couldn't parse {} in range \"{}\": {}", n, input, e)
+                })
+            });
+            (nums.next().unwrap(), nums.next().unwrap())
+        })
+    };
+    if let Some((a, b)) = find_in("..=") {
+        (a..=b).into()
+    } else if let Some((a, b)) = find_in("..") {
+        (a..b).into()
+    } else if let Ok(parsed) = input.parse::<F>() {
+        (parsed.clone()..=parsed).into()
+    } else {
+        panic!("Invalid range: \"{}\"", input)
+    }
 }
-impl<T> From<std::ops::Range<T>> for RangeConfig<T> {
-    fn from(other: std::ops::Range<T>) -> RangeConfig<T> {
-        RangeConfig {
-            lo: other.start,
-            hi: other.end,
+
+#[derive(Debug, Deserialize)]
+pub struct ParticleEmitterConfig {
+    pub duration: usize,
+    pub direction_bounds: Option<[f32; 2]>,
+
+    // particle config
+    pub particle_count: String,
+    pub force_magnitude: String,
+    pub force_decay: String,
+    pub particle_duration: String,
+    pub particle_duration_fade_after: String,
+    pub color: [String; 4],
+    pub size: [String; 2],
+    pub square: bool,
+}
+impl ParticleEmitterConfig {
+    pub fn into_emitter(&self) -> crate::graphics::particle::Emitter {
+        crate::graphics::particle::Emitter {
+            duration: self.duration,
+            direction_bounds: self
+                .direction_bounds
+                .map(|[a, b]| crate::graphics::particle::direction_bounds_from_degrees(a, b)),
+
+            // particle count
+            particle_count: uniform_from_string(&self.particle_count),
+            force_magnitude: uniform_from_string(&self.force_magnitude),
+            force_decay: uniform_from_string(&self.force_decay),
+            particle_duration: uniform_from_string(&self.particle_duration),
+            particle_duration_fade_after: uniform_from_string(&self.particle_duration_fade_after),
+            color: {
+                let mut nums = self.color.iter().map(|x: &String| -> Uniform<f32> {
+                    uniform_from_string(x)
+                });
+                [nums.next().unwrap(), nums.next().unwrap(), nums.next().unwrap(), nums.next().unwrap()]
+            },
+            size: {
+                let mut nums = self.size.iter()
+                    .map(|x: &String| -> Uniform<f32> {
+                        uniform_from_string(x)
+                    });
+                [nums.next().unwrap(), nums.next().unwrap()]
+            },
+            square: self.square,
         }
     }
 }

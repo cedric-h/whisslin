@@ -10,7 +10,7 @@ impl Fade {
     pub fn no_visual(duration: usize) -> Self {
         Fade {
             duration,
-            fade_after: duration
+            fade_after: duration,
         }
     }
 }
@@ -19,7 +19,8 @@ pub fn fade(world: &mut crate::World) {
     let l8r = &mut world.l8r;
     let ecs = &world.ecs;
 
-    for (fading_ent, (fade, appearance)) in &mut ecs.query::<(&mut Fade, &mut super::Appearance)>() {
+    for (fading_ent, (fade, appearance)) in &mut ecs.query::<(&mut Fade, &mut super::Appearance)>()
+    {
         fade.duration -= 1;
 
         if fade.fade_after > fade.duration {
