@@ -135,7 +135,7 @@ pub fn hurtful_damage(world: &mut crate::World) {
                             ncollide2d::shape::Cuboid::new(crate::Vec2::repeat(1.0)),
                             crate::CollisionGroups::new()
                                 .with_membership(&[])
-                                .with_whitelist(&[])
+                                .with_whitelist(&[]),
                         );
                     });
 
