@@ -78,16 +78,17 @@ pub fn collision(world: &mut World) {
                 //std::array::IntoIter::new([(ent_a, ent_b), (ent_b, ent_a)])
                 vec![(ent_a, ent_b), (ent_b, ent_a)]
                     .into_iter()
-                    .map(|(ent, other_ent)| {
-                        (
-                            ecs.get_mut::<Contacts>(ent).unwrap_or_else(|e| {
+                    .filter_map(|(ent, other_ent)| {
+                        Some((
+                            ecs.get_mut::<Contacts>(ent).ok()?
+                            /*.unwrap_or_else(|e| {
                                 panic!(
                                     "Entity[{:?}] was collided with but has no Contacts: {}",
                                     ent, e
                                 )
-                            }),
+                            })*/,
                             other_ent,
-                        )
+                        ))
                     })
                     .for_each($for_each);
             };
@@ -107,7 +108,7 @@ pub fn collision(world: &mut World) {
     });
 
     for (collided_ent, (Contacts(contacts), &PhysHandle(collided_h), rigid_groups)) in ecs
-        .query::<(&Contacts, &PhysHandle, Option<&RigidGroups>)>()
+        .query::<(&_, &_, Option<&RigidGroups>)>()
         .without::<CollisionStatic>()
         .iter()
     {
@@ -116,7 +117,7 @@ pub fn collision(world: &mut World) {
         for &other_ent in contacts.iter() {
             // if the recorded contact is with an entity that can't be found,
             // just ignore it, they've probably been deleted or something.
-            if let Ok(PhysHandle(other_h)) = ecs.get::<PhysHandle>(other_ent).map(|x| *x) {
+            if let Ok(PhysHandle(other_h)) = ecs.get(other_ent).map(|x| *x) {
                 if let (Ok(other_rigid_groups), Some(rigid_groups)) =
                     (ecs.get::<RigidGroups>(other_ent), rigid_groups)
                 {

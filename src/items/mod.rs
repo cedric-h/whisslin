@@ -1,4 +1,4 @@
-use crate::{Iso2, World};
+use crate::World;
 use fxhash::FxHashMap;
 use hecs::Entity;
 
@@ -151,10 +151,14 @@ impl Inventory {
     }
 
     fn insert(&mut self, item_name: String, item_ent: hecs::Entity, l8r: &mut crate::L8r) {
-        // now that it's becoming an item, we don't want it to have a position.
-        // Removing the position ensures that it's not rendered or collided with
+        // now that it's becoming an item, we want to yank it out of the physics world.
+        // doing that ensures that it's not rendered or collided with
         // or any of that other icky stuff.
-        l8r.remove_one::<Iso2>(item_ent);
+        l8r.l8r(move |world| {
+            if let Ok(crate::PhysHandle(h)) = world.ecs.remove_one(item_ent) {
+                world.phys.remove(&[h])
+            }
+        });
 
         /*
         println!(

@@ -120,12 +120,12 @@ impl PlayerConfig {
     }
 }
 
-use rand::distributions::uniform::{Uniform, SampleUniform};
+use rand::distributions::uniform::{SampleUniform, Uniform};
 
-pub fn uniform_from_string<F: Clone + SampleUniform + std::str::FromStr>(
-    input: &str,
-) -> Uniform<F>
-where <F as std::str::FromStr>::Err: std::fmt::Display {
+pub fn uniform_from_string<F: Clone + SampleUniform + std::str::FromStr>(input: &str) -> Uniform<F>
+where
+    <F as std::str::FromStr>::Err: std::fmt::Display,
+{
     let find_in = |key| {
         input.find(key).map(|_| {
             let mut nums = input.split(key).map(|n| {
@@ -157,7 +157,7 @@ pub struct ParticleEmitterConfig {
     pub force_magnitude: String,
     pub force_decay: String,
     pub particle_duration: String,
-    pub particle_duration_fade_after: String,
+    pub particle_duration_fade: String,
     pub color: [String; 4],
     pub size: [String; 2],
     pub square: bool,
@@ -175,18 +175,24 @@ impl ParticleEmitterConfig {
             force_magnitude: uniform_from_string(&self.force_magnitude),
             force_decay: uniform_from_string(&self.force_decay),
             particle_duration: uniform_from_string(&self.particle_duration),
-            particle_duration_fade_after: uniform_from_string(&self.particle_duration_fade_after),
+            particle_duration_fade: uniform_from_string(&self.particle_duration_fade),
             color: {
-                let mut nums = self.color.iter().map(|x: &String| -> Uniform<f32> {
-                    uniform_from_string(x)
-                });
-                [nums.next().unwrap(), nums.next().unwrap(), nums.next().unwrap(), nums.next().unwrap()]
+                let mut nums = self
+                    .color
+                    .iter()
+                    .map(|x: &String| -> Uniform<f32> { uniform_from_string(x) });
+                [
+                    nums.next().unwrap(),
+                    nums.next().unwrap(),
+                    nums.next().unwrap(),
+                    nums.next().unwrap(),
+                ]
             },
             size: {
-                let mut nums = self.size.iter()
-                    .map(|x: &String| -> Uniform<f32> {
-                        uniform_from_string(x)
-                    });
+                let mut nums = self
+                    .size
+                    .iter()
+                    .map(|x: &String| -> Uniform<f32> { uniform_from_string(x) });
                 [nums.next().unwrap(), nums.next().unwrap()]
             },
             square: self.square,
@@ -232,6 +238,16 @@ impl WeaponConfig {
                     .with_membership(&[collide::WEAPON])
                     .with_blacklist(&[collide::PLAYER, collide::ENEMY]),
             ),
+            phys::KnockBack {
+                groups: crate::CollisionGroups::new()
+                    .with_membership(&[collide::WEAPON])
+                    .with_whitelist(&[collide::ENEMY]),
+                force_decay: 0.75,
+                force_magnitude: 0.75,
+                use_force_direction: true,
+                // TODO: separate minimum_speed_to_knock_back
+                minimum_speed: Some(self.minimum_speed_to_damage),
+            },
             combat::Hurtful {
                 raw_damage: self.damage,
                 minimum_speed: self.minimum_speed_to_damage,

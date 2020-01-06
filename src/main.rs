@@ -211,36 +211,62 @@ impl State for Game {
                     alignment: graphics::Alignment::Center,
                     ..Default::default()
                 },
-                combat::health::Health::new(1),
-                /*
-                combat::DamageReceivedParticleEmitter(graphics::particle::Emitter {
-                    duration: 50,
-                    particle_count: (2..=3).into(),
-                    // particle config
-                    force_magnitude: (0.4..=0.6).into(),
-                    force_decay: (0.7..=0.8).into(),
-                    color: [
-                        (0.65..0.85).into(),
-                        (0.0..0.1).into(),
-                        (0.0..0.1).into(),
-                        (1.0..=1.0).into(),
-                    ],
-                    size: [(0.1..0.2).into(), (0.1..0.4).into()],
-                    square: true,
-                    ..Default::default()
-                }),*/
-                combat::DamageReceivedParticleEmitter(toml::from_str::<config::ParticleEmitterConfig>(r#"
-                    duration = 50
-                    particle_count = "2..=3"
-                    # particle config
-                    force_magnitude = "0.4..=0.6"
-                    force_decay = "0.7..=0.8"
-                    particle_duration = "100"
-                    particle_duration_fade_after = "25"
-                    color = ["0.65..0.85", "0.0..0.1", "0.0..0.1", "1.0"]
-                    size = ["0.1..0.2", "0.1..0.4"]
-                    square = true
-                "#).unwrap().into_emitter()),
+                combat::health::Health::new(10),
+                combat::DamageReceivedParticleEmitters(vec![toml::from_str::<
+                    config::ParticleEmitterConfig,
+                >(
+                    r#"
+                        duration = 3
+                        particle_count = "1"
+                        direction_bounds = [-15, 15]
+                        # particle config
+                        force_magnitude = "0.6..=0.9"
+                        force_decay = "0.85..=0.9"
+                        particle_duration = "100"
+                        particle_duration_fade = "25"
+                        color = ["0.65..0.85", "0.0..0.1", "0.0..0.1", "1.0"]
+                        size = ["0.1..0.2", "0.0"]
+                        square = true
+                        "#,
+                )
+                .unwrap()
+                .into_emitter()]),
+                DeathParticleEmitters(vec![
+                    toml::from_str::<config::ParticleEmitterConfig>(
+                        r#"
+                        duration = 50
+                        particle_count = "2..=3"
+                        # particle config
+                        force_magnitude = "0.4..=0.6"
+                        force_decay = "0.7..=0.8"
+                        particle_duration = "100"
+                        particle_duration_fade = "25"
+                        color = ["0.65..0.85", "0.0..0.1", "0.0..0.1", "1.0"]
+                        size = ["0.1..0.2", "0.0"]
+                        square = true
+                        "#,
+                    )
+                    .unwrap()
+                    .into_emitter(),
+                    /*
+                    toml::from_str::<config::ParticleEmitterConfig>(
+                        r#"
+                        duration = 1
+                        particle_count = "4..=6"
+                        direction_bounds = [15, -15]
+                        # particle config
+                        force_magnitude = "0.6..=0.8"
+                        force_decay = "0.8..=0.85"
+                        particle_duration = "250"
+                        particle_duration_fade = "50"
+                        color = ["0.96", "0.87", "0.70", "1.0"]
+                        size = ["0.3..0.6", "0.0"]
+                        square = true
+                        "#,
+                    )
+                    .unwrap()
+                    .into_emitter(),*/
+                ]),
                 phys::collision::RigidGroups(base_group.with_blacklist(&knock_back_not_collide)),
                 phys::Charge::new(0.05),
                 phys::LookChase::new(player, 0.025),
@@ -248,6 +274,8 @@ impl State for Game {
                     groups: base_group.with_whitelist(&knock_back_not_collide),
                     force_decay: 0.75,
                     force_magnitude: 0.2,
+                    use_force_direction: false,
+                    minimum_speed: None,
                 },
             ));
             world.add_hitbox(
@@ -328,6 +356,7 @@ impl State for Game {
         let scheduled_world_edits = self.world.l8r.drain();
         L8r::now(scheduled_world_edits, &mut self.world);
 
+        death_particles(&mut self.world);
         phys::collision::clear_dead_collision_objects(&mut self.world);
         clear_dead(&mut self.world);
 
@@ -348,12 +377,46 @@ fn main() {
                 width: 480,
                 height: 270,
             },
+            fullscreen: true,
             ..Settings::default()
         },
     );
 }
 
 pub struct Dead;
+pub struct DeathParticleEmitters(Vec<graphics::particle::Emitter>);
+
+pub fn death_particles(world: &mut World) {
+    let ecs = &world.ecs;
+    let phys = &world.phys;
+    let l8r = &mut world.l8r;
+
+    for (_, (_, &PhysHandle(h), particles)) in
+        &mut ecs.query::<(&Dead, &_, &DeathParticleEmitters)>()
+    {
+        (|| {
+            let loc = phys.collision_object(h)?.position().translation.vector;
+
+            for emitter in particles.0.iter().cloned() {
+                let fade = graphics::fade::Fade::no_visual(emitter.duration);
+
+                l8r.l8r(move |world| {
+                    let emitter_ent = world.ecs.spawn((emitter, fade));
+                    world.add_hitbox(
+                        emitter_ent,
+                        Iso2::new(loc, 0.0),
+                        ncollide2d::shape::Cuboid::new(Vec2::repeat(1.0)),
+                        CollisionGroups::new()
+                            .with_membership(&[])
+                            .with_whitelist(&[]),
+                    );
+                });
+            }
+
+            Some(())
+        })();
+    }
+}
 
 pub fn clear_dead(world: &mut World) {
     let to_kill = world
@@ -362,6 +425,7 @@ pub fn clear_dead(world: &mut World) {
         .iter()
         .map(|(ent, _)| ent)
         .collect::<Vec<hecs::Entity>>();
+
     to_kill.into_iter().for_each(|ent| {
         world
             .ecs

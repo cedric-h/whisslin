@@ -442,7 +442,8 @@ pub fn aiming(world: &mut World, window: &mut Window, cfg: &Config) {
             );
             l8r.insert_one(
                 wep_ent,
-                super::Force::new(
+                // the no clear is important for not knocking back things later
+                super::Force::new_no_clear(
                     delta.into_inner() * weapon.force_magnitude,
                     weapon.force_decay,
                 ),
@@ -452,7 +453,7 @@ pub fn aiming(world: &mut World, window: &mut Window, cfg: &Config) {
                 wep_ent,
                 crate::graphics::fade::Fade {
                     duration: 100,
-                    fade_after: 25,
+                    fade_start: 25,
                 },
             );
 
