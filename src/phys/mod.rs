@@ -61,6 +61,12 @@ pub struct KnockBack {
     pub groups: crate::CollisionGroups,
     pub force_decay: f32,
     pub force_magnitude: f32,
+    /// Whether or not the direction of any Force affecting the object should be used
+    /// for the direction for the knock back.
+    pub use_force_direction: bool,
+    /// If the entity has a Force and the magnitude of the Force's `vec` field isn't at least
+    /// this high, no knockback will be administered.
+    pub minimum_speed: Option<f32>,
 }
 
 /// A Force is applied to an Entity every frame and decays a bit,
@@ -71,10 +77,26 @@ pub struct Force {
     pub vec: Vec2,
     /// Domain [0, 1] unless you want the velocity to increase exponentially :thinking:
     pub decay: f32,
+    /// Whether or not to remove the component from the entity when the Force isn't really
+    /// having an effect any more.
+    pub clear: bool,
 }
 impl Force {
+    /// A new Force that is cleared when the velocity decays down to extremely small decimals.
     pub fn new(vec: Vec2, decay: f32) -> Self {
-        Self { vec, decay }
+        Self {
+            vec,
+            decay,
+            clear: true,
+        }
+    }
+    /// A new Force that is NOT cleared when the velocity decays down to extremely small decimals.
+    pub fn new_no_clear(vec: Vec2, decay: f32) -> Self {
+        Self {
+            vec,
+            decay,
+            clear: false,
+        }
     }
 }
 
@@ -146,11 +168,17 @@ pub fn velocity(world: &mut World) {
         })();
     }
 
-    for (ent, (&PhysHandle(h), knock_back, contacts)) in
+    for (ent, (&PhysHandle(h), knock_back, contacts, force)) in
         &mut world
             .ecs
-            .query::<(&PhysHandle, &KnockBack, &collision::Contacts)>()
+            .query::<(&_, &KnockBack, &collision::Contacts, Option<&Force>)>()
     {
+        if let (Some(force), Some(minimum_speed)) = (force, knock_back.minimum_speed) {
+            if force.vec.magnitude() < minimum_speed {
+                continue;
+            }
+        }
+
         let loc = phys
             .collision_object(h)
             .unwrap_or_else(|| {
@@ -164,46 +192,38 @@ pub fn velocity(world: &mut World) {
             .vector;
 
         for &o_ent in contacts.iter() {
-            if ecs.get::<collision::CollisionStatic>(o_ent).is_err() {
-                let PhysHandle(o_h) = *ecs.get::<PhysHandle>(o_ent).unwrap_or_else(|e| {
-                    panic!(
-                        "Entity[{:?}] stored in Contacts[{:?}] but no PhysHandle: {}",
-                        o_ent, ent, e
-                    )
-                });
-                let o_obj = phys.collision_object(o_h)
-                    .unwrap_or_else(|| {
-                        panic!(
-                            "Entity[{:?}] stored in Contacts[{:?}] with PhysHandle[{:?}] but no Collision Object!",
-                            ent, o_ent, o_h
-                        )
-                    });
+            (|| {
+                ecs.get::<collision::CollisionStatic>(o_ent).err()?;
+                let PhysHandle(o_h) = *ecs.get::<PhysHandle>(o_ent).ok()?;
+                /*.unwrap_or_else(|e| panic!(
+                    "Entity[{:?}] stored in Contacts[{:?}] but no PhysHandle: {}",
+                    o_ent, ent, e
+                ));*/
+                let o_obj = phys.collision_object(o_h)?;
+                /*
+                .unwrap_or_else(|| panic!(
+                    "Entity[{:?}] stored in Contacts[{:?}] with PhysHandle[{:?}] but no Collision Object!",
+                    ent, o_ent, o_h
+                ));*/
 
                 if knock_back
                     .groups
                     .can_interact_with_groups(o_obj.collision_groups())
                 {
-                    if let Some((_, _, _, contacts)) = phys.contact_pair(h, o_h, true) {
-                        let deepest = contacts
-                            .deepest_contact()
-                            .expect("No deepest contact!")
-                            .contact;
-                        let delta = (o_obj.position().translation.vector - loc).normalize();
+                    let delta = force
+                        .map(|f| f.vec)
+                        .filter(|_| knock_back.use_force_direction)
+                        .unwrap_or_else(|| o_obj.position().translation.vector - loc)
+                        .normalize();
 
-                        // multiplying the magnitude of the force by this should allow us to make
-                        // collisions that only skim the surface less knockbacky
-                        let dot = delta.dot(&deepest.normal).abs();
-
-                        l8r.insert_one(
-                            o_ent,
-                            Force::new(
-                                delta * knock_back.force_magnitude * dot,
-                                knock_back.force_decay,
-                            ),
-                        );
-                    }
+                    l8r.insert_one(
+                        o_ent,
+                        Force::new(delta * knock_back.force_magnitude, knock_back.force_decay),
+                    );
                 }
-            }
+
+                Some(())
+            })();
         }
     }
 
@@ -222,7 +242,7 @@ pub fn velocity(world: &mut World) {
                 iso
             });
 
-            if force.vec.magnitude_squared() < 0.0005 {
+            if force.clear && force.vec.magnitude_squared() < 0.0005 {
                 l8r.remove_one::<Force>(force_ent);
             }
 

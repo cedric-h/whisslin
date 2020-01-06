@@ -17,7 +17,7 @@ pub fn direction_bounds_from_degrees(a: f32, b: f32) -> (Unit<Vec2>, Unit<Vec2>)
 
 /// Generates some particles at the location of the Entity this Component is associated
 /// with for the given duration, sending them off in a direction specified by the bounds.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Emitter {
     /// For how many frames should this Particle Emitter emit particles?
     pub duration: usize,
@@ -34,7 +34,7 @@ pub struct Emitter {
     pub force_magnitude: Uniform<f32>,
     pub force_decay: Uniform<f32>,
     pub particle_duration: Uniform<usize>,
-    pub particle_duration_fade_after: Uniform<usize>,
+    pub particle_duration_fade: Uniform<usize>,
     pub color: [Uniform<f32>; 4],
     pub size: [Uniform<f32>; 2],
     /// If true, the value generated for the particle's size on the x axis
@@ -52,7 +52,7 @@ impl Default for Emitter {
             force_decay: (0.75..=0.75).into(),
             force_magnitude: (1.0..=1.0).into(),
             particle_duration: (100..=100).into(),
-            particle_duration_fade_after: (25..=25).into(),
+            particle_duration_fade: (25..=25).into(),
             color: [
                 (0.2..1.0).into(),
                 (0.0..=0.0).into(),
@@ -185,13 +185,13 @@ impl Manager {
                         z_offset: -10.0,
                         ..Default::default()
                     },
-                    phys::Force {
-                        vec: *dir * emitter.force_magnitude.sample(rng),
-                        decay: emitter.force_decay.sample(rng),
-                    },
+                    phys::Force::new(
+                        *dir * emitter.force_magnitude.sample(rng),
+                        emitter.force_decay.sample(rng),
+                    ),
                     graphics::fade::Fade {
                         duration: emitter.particle_duration.sample(rng),
-                        fade_after: emitter.particle_duration_fade_after.sample(rng),
+                        fade_start: emitter.particle_duration_fade.sample(rng),
                     },
                 );
 

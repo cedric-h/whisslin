@@ -3,14 +3,14 @@
 #[derive(Debug, serde::Deserialize)]
 pub struct Fade {
     pub duration: usize,
-    pub fade_after: usize,
+    pub fade_start: usize,
 }
 
 impl Fade {
     pub fn no_visual(duration: usize) -> Self {
         Fade {
             duration,
-            fade_after: duration,
+            fade_start: duration,
         }
     }
 }
@@ -23,8 +23,8 @@ pub fn fade(world: &mut crate::World) {
     {
         fade.duration -= 1;
 
-        if fade.fade_after > fade.duration {
-            appearance.transparency = Some(fade.duration as f32 / fade.fade_after as f32);
+        if fade.fade_start > fade.duration {
+            appearance.transparency = Some(fade.duration as f32 / fade.fade_start as f32);
         }
 
         if fade.duration == 0 {

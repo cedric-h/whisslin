@@ -61,11 +61,11 @@ equip_keyframes = [
 offset = [0.115, -0.385]
 bottom_padding = 0.325
 # projectile
-force_magnitude = 2.125
-force_decay = 0.75
-minimum_speed_to_damage = 0.05
-speed_damage_coefficient = 1.0
-minimum_damage = 1
+force_magnitude = 0.325
+force_decay = 0.98
+minimum_speed_to_damage = 0.1
+speed_damage_coefficient = 3.0
+minimum_damage = 2
 damage = 1
 # side effects
 player_knock_back_force = 0.5

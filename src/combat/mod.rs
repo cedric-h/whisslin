@@ -52,7 +52,7 @@ impl Hurtful {
 }
 
 /// A particle::Emitter component that is assigned to the Entity that receives damage when damage is dealt.
-pub struct DamageReceivedParticleEmitter(pub crate::graphics::particle::Emitter);
+pub struct DamageReceivedParticleEmitters(pub Vec<crate::graphics::particle::Emitter>);
 
 /// Control when your Entity is Hurtful
 pub enum HurtfulKind {
@@ -106,38 +106,47 @@ pub fn hurtful_damage(world: &mut crate::World) {
             continue;
         }
 
-        for &touching_ent in contacts.iter() {
-            if let Ok(mut hp) = ecs.get_mut::<Health>(touching_ent) {
+        let hurtful_loc = match phys.collision_object(h) {
+            Some(obj) => obj.position().translation.vector,
+            _ => continue,
+        };
+
+        for &touched_ent in contacts.iter() {
+            if let Ok(mut hp) = ecs.get_mut::<Health>(touched_ent) {
                 *hp -= hurtful.damage(speed);
 
                 (|| {
                     let particles = ecs
-                        .get::<DamageReceivedParticleEmitter>(touching_ent)
+                        .get::<DamageReceivedParticleEmitters>(touched_ent)
                         .ok()?;
-                    let PhysHandle(touching_h) = *ecs.get::<PhysHandle>(touching_ent).ok()?;
+                    let PhysHandle(touched_h) = *ecs.get(touched_ent).ok()?;
+                    let touched_loc = phys
+                        .collision_object(touched_h)?
+                        .position()
+                        .translation
+                        .vector;
 
-                    let (_, _, _, contacts) = phys.contact_pair(h, touching_h, true)?;
-                    let deepest = contacts
-                        .deepest_contact()
-                        .expect("no deepest contact!")
-                        .contact;
+                    for mut emitter in particles.0.iter().cloned() {
+                        emitter.offset_direction_bounds(crate::na::Unit::new_normalize(
+                            force
+                                .map(|f| f.vec)
+                                .unwrap_or_else(|| hurtful_loc - touched_loc),
+                        ));
 
-                    let mut emitter = particles.0.clone();
-                    emitter.offset_direction_bounds(deepest.normal);
+                        let fade = crate::graphics::fade::Fade::no_visual(emitter.duration);
 
-                    let fade = crate::graphics::fade::Fade::no_visual(emitter.duration);
-
-                    l8r.l8r(move |world| {
-                        let emitter_ent = world.ecs.spawn((emitter, fade));
-                        world.add_hitbox(
-                            emitter_ent,
-                            crate::Iso2::new(deepest.world1.coords, 0.0),
-                            ncollide2d::shape::Cuboid::new(crate::Vec2::repeat(1.0)),
-                            crate::CollisionGroups::new()
-                                .with_membership(&[])
-                                .with_whitelist(&[]),
-                        );
-                    });
+                        l8r.l8r(move |world| {
+                            let emitter_ent = world.ecs.spawn((emitter, fade));
+                            world.add_hitbox(
+                                emitter_ent,
+                                crate::Iso2::new(touched_loc, 0.0),
+                                ncollide2d::shape::Cuboid::new(crate::Vec2::repeat(1.0)),
+                                crate::CollisionGroups::new()
+                                    .with_membership(&[])
+                                    .with_whitelist(&[]),
+                            );
+                        });
+                    }
 
                     Some(())
                 })();
