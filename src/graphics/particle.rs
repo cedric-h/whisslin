@@ -15,27 +15,48 @@ pub fn direction_bounds_from_degrees(a: f32, b: f32) -> (Unit<Vec2>, Unit<Vec2>)
     (convert_one(a), convert_one(b))
 }
 
+fn deserialize_direction_bounds_from_degrees<'de, D>(
+    deserializer: D,
+) -> Result<Option<(Unit<Vec2>, Unit<Vec2>)>, D::Error>
+where
+    D: serde::de::Deserializer<'de>,
+{
+    use serde::Deserialize as _;
+    <Option<(f32, f32)>>::deserialize(deserializer)
+        .map(|val| val.map(|(left, right)| direction_bounds_from_degrees(left, right)))
+}
+use crate::config::string_range;
+
 /// Generates some particles at the location of the Entity this Component is associated
 /// with for the given duration, sending them off in a direction specified by the bounds.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Deserialize)]
 pub struct Emitter {
     /// For how many frames should this Particle Emitter emit particles?
     pub duration: usize,
 
     /// Between what two directions should the generated particles.
     /// If None, a completely random direction is supplied.
+    #[serde(deserialize_with = "deserialize_direction_bounds_from_degrees")]
+    #[serde(default)]
     pub direction_bounds: Option<(Unit<Vec2>, Unit<Vec2>)>,
 
     /// A Uniform used each frame to generate a value indicating how many particles should be emitted
     /// at the end of that frame.
+    #[serde(deserialize_with = "string_range::uniform::range")]
     pub particle_count: Uniform<usize>,
 
     // particle configuration
+    #[serde(deserialize_with = "string_range::uniform::range")]
     pub force_magnitude: Uniform<f32>,
+    #[serde(deserialize_with = "string_range::uniform::range")]
     pub force_decay: Uniform<f32>,
+    #[serde(deserialize_with = "string_range::uniform::range")]
     pub particle_duration: Uniform<usize>,
+    #[serde(deserialize_with = "string_range::uniform::range")]
     pub particle_duration_fade: Uniform<usize>,
+    #[serde(deserialize_with = "string_range::uniform::range_array_4")]
     pub color: [Uniform<f32>; 4],
+    #[serde(deserialize_with = "string_range::uniform::range_array_2")]
     pub size: [Uniform<f32>; 2],
     /// If true, the value generated for the particle's size on the x axis
     /// will also be used for its size on the y axis.
