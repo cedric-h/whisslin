@@ -200,8 +200,7 @@ impl State for Game {
         const ENEMY_COUNT: usize = 4;
         for i in 0..ENEMY_COUNT {
             let angle = (std::f32::consts::PI * 2.0 / (ENEMY_COUNT as f32)) * (i as f32);
-            let loc = player_loc + na::UnitComplex::from_angle(angle) * Vec2::repeat(5.0);
-
+            let loc = player_loc + na::UnitComplex::from_angle(angle) * Vec2::repeat(5.0); 
             let base_group = CollisionGroups::new().with_membership(&[collide::ENEMY]);
             let knock_back_not_collide = [collide::ENEMY, collide::PLAYER];
 
@@ -212,61 +211,8 @@ impl State for Game {
                     ..Default::default()
                 },
                 combat::health::Health::new(10),
-                combat::DamageReceivedParticleEmitters(vec![toml::from_str::<
-                    config::ParticleEmitterConfig,
-                >(
-                    r#"
-                        duration = 3
-                        particle_count = "1"
-                        direction_bounds = [-15, 15]
-                        # particle config
-                        force_magnitude = "0.6..=0.9"
-                        force_decay = "0.85..=0.9"
-                        particle_duration = "100"
-                        particle_duration_fade = "25"
-                        color = ["0.65..0.85", "0.0..0.1", "0.0..0.1", "1.0"]
-                        size = ["0.1..0.2", "0.0"]
-                        square = true
-                        "#,
-                )
-                .unwrap()
-                .into_emitter()]),
-                DeathParticleEmitters(vec![
-                    toml::from_str::<config::ParticleEmitterConfig>(
-                        r#"
-                        duration = 50
-                        particle_count = "2..=3"
-                        # particle config
-                        force_magnitude = "0.4..=0.6"
-                        force_decay = "0.7..=0.8"
-                        particle_duration = "100"
-                        particle_duration_fade = "25"
-                        color = ["0.65..0.85", "0.0..0.1", "0.0..0.1", "1.0"]
-                        size = ["0.1..0.2", "0.0"]
-                        square = true
-                        "#,
-                    )
-                    .unwrap()
-                    .into_emitter(),
-                    /*
-                    toml::from_str::<config::ParticleEmitterConfig>(
-                        r#"
-                        duration = 1
-                        particle_count = "4..=6"
-                        direction_bounds = [15, -15]
-                        # particle config
-                        force_magnitude = "0.6..=0.8"
-                        force_decay = "0.8..=0.85"
-                        particle_duration = "250"
-                        particle_duration_fade = "50"
-                        color = ["0.96", "0.87", "0.70", "1.0"]
-                        size = ["0.3..0.6", "0.0"]
-                        square = true
-                        "#,
-                    )
-                    .unwrap()
-                    .into_emitter(),*/
-                ]),
+                combat::DamageReceivedParticleEmitters(vec![config.particles["blood_splash"].clone()]),
+                DeathParticleEmitters(vec![config.particles["arterial_spray"].clone()]),
                 phys::collision::RigidGroups(base_group.with_blacklist(&knock_back_not_collide)),
                 phys::Charge::new(0.05),
                 phys::LookChase::new(player, 0.025),
@@ -377,7 +323,7 @@ fn main() {
                 width: 480,
                 height: 270,
             },
-            fullscreen: true,
+            //fullscreen: true,
             ..Settings::default()
         },
     );
