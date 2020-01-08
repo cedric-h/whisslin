@@ -1,7 +1,7 @@
+use crate::{na, PhysHandle, Vec2};
+
 pub mod health;
 pub use health::Health;
-
-use crate::PhysHandle;
 
 /// Things with the Hurtful component remove Health from the Entities in their Contacts.
 ///
@@ -120,31 +120,23 @@ pub fn hurtful_damage(world: &mut crate::World) {
                         .get::<DamageReceivedParticleEmitters>(touched_ent)
                         .ok()?;
                     let PhysHandle(touched_h) = *ecs.get(touched_ent).ok()?;
-                    let touched_loc = phys
-                        .collision_object(touched_h)?
-                        .position()
-                        .translation
-                        .vector;
 
-                    for mut emitter in particles.0.iter().cloned() {
-                        emitter.offset_direction_bounds(crate::na::Unit::new_normalize(
+                    let mut emitter_pos = *phys.collision_object(touched_h)?.position();
+
+                    let touched_loc = emitter_pos.translation.vector;
+
+                    emitter_pos.rotation = na::UnitComplex::rotation_between(
+                        &na::Unit::new_normalize(
                             force
                                 .map(|f| f.vec)
                                 .unwrap_or_else(|| hurtful_loc - touched_loc),
-                        ));
+                        ),
+                        &Vec2::x_axis(),
+                    );
 
-                        let fade = crate::graphics::fade::Fade::no_visual(emitter.duration);
-
+                    for emitter in particles.0.iter().cloned() {
                         l8r.l8r(move |world| {
-                            let emitter_ent = world.ecs.spawn((emitter, fade));
-                            world.add_hitbox(
-                                emitter_ent,
-                                crate::Iso2::new(touched_loc, 0.0),
-                                ncollide2d::shape::Cuboid::new(crate::Vec2::repeat(1.0)),
-                                crate::CollisionGroups::new()
-                                    .with_membership(&[])
-                                    .with_whitelist(&[]),
-                            );
+                            emitter.spawn_instance(world, emitter_pos);
                         });
                     }
 

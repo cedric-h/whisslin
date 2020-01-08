@@ -27,12 +27,40 @@ where
 }
 use crate::config::string_range;
 
+/// Whether or not an Emitter is actively spewing particles.
+/// Default is `EmitterStatus::Active`.
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+pub enum EmitterStatus {
+    /// The Emitter is spewing out particles.
+    Active,
+    /// The Emitter is NOT spewing out particles, and the timer attached to it is frozen.
+    Disabled,
+}
+impl Default for EmitterStatus {
+    fn default() -> Self {
+        EmitterStatus::Active
+    }
+}
+
+/// The general course of this Emitter's existence.
+#[derive(Clone, Debug, serde::Deserialize)]
+pub enum EmitterLifeCycle {
+    /// Emitters with this life cycle will continue to emit particles forever,
+    /// until the Entity they are associated with is destroyed or their Emitter
+    /// component is removed through some other means.
+    Immortal,
+    /// Emitters with this life cycle will continue to decrement the `frames` field
+    /// contained in this Enum variant until it reaches 0, at which point the Emitter
+    /// component will automatically be removed from the Entity it is attached to.
+    Duration { frames: usize },
+}
+
 /// Generates some particles at the location of the Entity this Component is associated
 /// with for the given duration, sending them off in a direction specified by the bounds.
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct Emitter {
     /// For how many frames should this Particle Emitter emit particles?
-    pub duration: usize,
+    pub life_cycle: EmitterLifeCycle,
 
     /// Between what two directions should the generated particles.
     /// If None, a completely random direction is supplied.
@@ -44,6 +72,14 @@ pub struct Emitter {
     /// at the end of that frame.
     #[serde(deserialize_with = "string_range::uniform::range")]
     pub particle_count: Uniform<usize>,
+
+    /// Whether or not an Emitter should spew particles.
+    /// Default is `EmitterStatus::Active`.
+    /// The duration timer is also ignored and not incremented when the
+    /// field is set to `EmitterStatus::Disabled`.
+    #[serde(skip)]
+    #[serde(default)]
+    pub status: EmitterStatus,
 
     // particle configuration
     #[serde(deserialize_with = "string_range::uniform::range")]
@@ -65,8 +101,9 @@ pub struct Emitter {
 impl Default for Emitter {
     fn default() -> Self {
         Self {
-            duration: 1,
+            life_cycle: EmitterLifeCycle::Duration { frames: 1 },
             particle_count: (1..=1).into(),
+            status: Default::default(),
             direction_bounds: None,
 
             // the particles themselves
@@ -102,7 +139,7 @@ impl Emitter {
     ///     direction_bounds: my_bounds,
     ///     .. Default::default()
     /// };
-    /// my_emitter.offset_direction_bounds(na::Unit::new_normalized(na::Vector2<f32>::repeat(0.5)));
+    /// my_emitter.offset_direction_bounds(na::Unit::new_normalize(na::Vector2<f32>::repeat(0.5)));
     /// ```
     ///
     /// Has no effect if no `direction_bounds` field is found on the Emitter.
@@ -110,7 +147,8 @@ impl Emitter {
         let offset = unit_vector_to_unit_complex(dir);
         let offset_one = |vec| unit_vector_to_unit_complex(vec) * offset * Vec2::x_axis();
 
-        self.direction_bounds
+        self.direction_bounds = self
+            .direction_bounds
             .map(|(a, b)| (offset_one(a), offset_one(b)));
     }
 
@@ -127,6 +165,35 @@ impl Emitter {
                 na::UnitComplex::from_angle(rng.gen_range(0.0, std::f32::consts::PI * 2.0))
                     * Vec2::x_axis()
             })
+    }
+
+    /// Send an Emitter into a World as its own Entity, with a Fade component attached to clean up
+    /// the Entity once it's done emitting particles, if needed.
+    ///
+    /// This is useful if you want to emit particles from where an Entity is right now, but you
+    /// aren't sure if the Entity will still exist long enough for an emitter attached to it to
+    /// actually send out any particles.
+    pub fn spawn_instance(mut self, world: &mut crate::World, pos: Iso2) -> hecs::Entity {
+        // launch the particles in the direction the position is rotated towards.
+        self.offset_direction_bounds(pos.rotation * Vec2::x_axis());
+
+        let emitter_ent = match self.life_cycle {
+            EmitterLifeCycle::Duration { frames } => world
+                .ecs
+                .spawn((self, super::fade::Fade::no_visual(frames))),
+            EmitterLifeCycle::Immortal => world.ecs.spawn((self,)),
+        };
+
+        world.add_hitbox(
+            emitter_ent,
+            pos,
+            ncollide2d::shape::Cuboid::new(Vec2::repeat(1.0)),
+            crate::CollisionGroups::new()
+                .with_membership(&[])
+                .with_whitelist(&[]),
+        );
+
+        emitter_ent
     }
 }
 
@@ -158,12 +225,18 @@ impl Manager {
         for (emitter_ent, (&PhysHandle(h), emitter)) in
             &mut ecs.query::<(&PhysHandle, &mut Emitter)>()
         {
-            emitter.duration -= 1;
-
-            // schedule the removal of the component at the end of the frame if its time is up.
-            if emitter.duration == 0 {
-                l8r.remove_one::<Emitter>(emitter_ent);
+            if emitter.status == EmitterStatus::Disabled {
+                continue;
             }
+
+            if let EmitterLifeCycle::Duration { frames } = &mut emitter.life_cycle {
+                *frames -= 1;
+
+                // schedule the removal of the component at the end of the frame if its time is up.
+                if *frames == 0 {
+                    l8r.remove_one::<Emitter>(emitter_ent);
+                }
+            };
 
             let emitter_translation = {
                 phys.collision_object(h)

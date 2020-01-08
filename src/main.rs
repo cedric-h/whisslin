@@ -20,7 +20,7 @@ pub struct PhysHandle(pub ncollide2d::pipeline::CollisionObjectSlabHandle);
 
 const DIMENSIONS: Vector = Vector { x: 480.0, y: 270.0 };
 const TILE_SIZE: f32 = 16.0;
-const SCALE: f32 = 2.0;
+const SCALE: f32 = 4.0;
 
 /// Collision Group Constants
 pub mod collide {
@@ -31,9 +31,11 @@ pub mod collide {
 
     /// Fences, Terrain, etc.
     pub const WORLD: usize = 5;
+    pub const FARMABLE: usize = 6;
 
     // yeah
     pub const GUI: usize = 10;
+    pub const PLANTING_CURSOR: usize = 11;
 }
 
 mod combat;
@@ -200,7 +202,7 @@ impl State for Game {
         const ENEMY_COUNT: usize = 4;
         for i in 0..ENEMY_COUNT {
             let angle = (std::f32::consts::PI * 2.0 / (ENEMY_COUNT as f32)) * (i as f32);
-            let loc = player_loc + na::UnitComplex::from_angle(angle) * Vec2::repeat(5.0); 
+            let loc = player_loc + na::UnitComplex::from_angle(angle) * Vec2::repeat(5.0);
             let base_group = CollisionGroups::new().with_membership(&[collide::ENEMY]);
             let knock_back_not_collide = [collide::ENEMY, collide::PLAYER];
 
@@ -211,7 +213,9 @@ impl State for Game {
                     ..Default::default()
                 },
                 combat::health::Health::new(10),
-                combat::DamageReceivedParticleEmitters(vec![config.particles["blood_splash"].clone()]),
+                combat::DamageReceivedParticleEmitters(vec![
+                    config.particles["blood_splash"].clone()
+                ]),
                 DeathParticleEmitters(vec![config.particles["arterial_spray"].clone()]),
                 phys::collision::RigidGroups(base_group.with_blacklist(&knock_back_not_collide)),
                 phys::Charge::new(0.05),
@@ -233,7 +237,8 @@ impl State for Game {
         }
 
         // Tilemap stuffs
-        tilemap::new_tilemap(&config.tilemap, &config.tiles, &mut world);
+        tilemap::build_map_entities(&mut world, &config);
+        farm::build_planting_cursor_entity(&mut world, &config);
 
         Ok(Game {
             world,
@@ -289,6 +294,7 @@ impl State for Game {
                 .update_draggable_under_mouse(&mut self.world, draggable_under_mouse, &mouse);
         } else {
             aiming::aiming(&mut self.world, window, &self.config);
+            farm::planting(&mut self.world, window);
         }
 
         combat::hurtful_damage(&mut self.world);
@@ -341,21 +347,12 @@ pub fn death_particles(world: &mut World) {
         &mut ecs.query::<(&Dead, &_, &DeathParticleEmitters)>()
     {
         (|| {
-            let loc = phys.collision_object(h)?.position().translation.vector;
+            let mut iso = Iso2::identity();
+            iso.translation = phys.collision_object(h)?.position().translation;
 
             for emitter in particles.0.iter().cloned() {
-                let fade = graphics::fade::Fade::no_visual(emitter.duration);
-
                 l8r.l8r(move |world| {
-                    let emitter_ent = world.ecs.spawn((emitter, fade));
-                    world.add_hitbox(
-                        emitter_ent,
-                        Iso2::new(loc, 0.0),
-                        ncollide2d::shape::Cuboid::new(Vec2::repeat(1.0)),
-                        CollisionGroups::new()
-                            .with_membership(&[])
-                            .with_whitelist(&[]),
-                    );
+                    emitter.spawn_instance(world, iso);
                 });
             }
 

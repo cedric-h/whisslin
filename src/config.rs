@@ -7,7 +7,7 @@ use std::fmt;
 #[cfg(feature = "hot-config")]
 pub struct ReloadWithConfig;
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct TileProperty {
     pub name: String,
     pub image: String,
@@ -209,10 +209,7 @@ pub mod string_range {
         {
             let raw = <[StringRange<T>; 4]>::deserialize(deserializer)?;
 
-            let mut converted = raw
-                .iter()
-                .cloned()
-                .map(|x| -> Uniform<T> { x.into() });
+            let mut converted = raw.iter().cloned().map(|x| -> Uniform<T> { x.into() });
 
             Ok([
                 converted.next().unwrap(),
@@ -229,10 +226,7 @@ pub mod string_range {
         {
             let raw = <[StringRange<T>; 2]>::deserialize(deserializer)?;
 
-            let mut converted = raw
-                .iter()
-                .cloned()
-                .map(|x| -> Uniform<T> { x.into() });
+            let mut converted = raw.iter().cloned().map(|x| -> Uniform<T> { x.into() });
             Ok([converted.next().unwrap(), converted.next().unwrap()])
         }
     }
