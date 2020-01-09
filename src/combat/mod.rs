@@ -16,6 +16,7 @@ pub use health::Health;
 ///
 /// assert_eq!(default_hurtful, Hurtful::default())
 /// ```
+#[derive(serde::Deserialize, Debug, Clone)]
 pub struct Hurtful {
     /// The damage before it is multipled by i.e. the speed as is the case if `HurtfulKind::Ram` is
     /// supplied.
@@ -55,6 +56,7 @@ impl Hurtful {
 pub struct DamageReceivedParticleEmitters(pub Vec<crate::graphics::particle::Emitter>);
 
 /// Control when your Entity is Hurtful
+#[derive(serde::Deserialize, Debug, Clone)]
 pub enum HurtfulKind {
     /// Do damage only if moving quickly and collision occurs with something.
     Ram {

@@ -15,7 +15,8 @@ hot-config = ["notify", "crossbeam-channel"]
 quicksilver = { git = "https://github.com/cedric-h/quicksilver.git", branch = "update-rustsim-crates" }
 
 # ecs
-hecs = { git = "https://github.com/Ralith/hecs.git" }
+hecs = "0.2.7"
+l8r = "0.1.1"
 
 # maffs
 ncollide2d = "0.21.0"
