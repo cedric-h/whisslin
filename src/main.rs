@@ -8,6 +8,7 @@ use quicksilver::{
     lifecycle::{run, Asset, Settings, State, Window},
     Result,
 };
+use l8r::L8r;
 use std::time::Instant;
 
 type Vec2 = na::Vector2<f32>;
@@ -50,59 +51,19 @@ use phys::{aiming, collision, movement};
 mod graphics;
 use graphics::images::{fetch_images, ImageMap};
 
-pub struct L8r(Vec<Box<dyn FnOnce(&mut World)>>);
-impl L8r {
-    pub fn new() -> Self {
-        L8r(Vec::new())
-    }
-
-    pub fn schedule(&mut self, then: Box<dyn FnOnce(&mut World)>) {
-        self.0.push(then);
-    }
-
-    pub fn l8r<F: 'static + Send + Sync + FnOnce(&mut World)>(&mut self, then: F) {
-        self.0.push(Box::new(then));
-    }
-
-    pub fn insert_one<C: hecs::Component>(&mut self, ent: hecs::Entity, component: C) {
-        self.l8r(move |world| world.ecs.insert_one(ent, component).unwrap())
-    }
-
-    pub fn remove_one<C: hecs::Component>(&mut self, ent: hecs::Entity) {
-        self.l8r(move |world| drop(world.ecs.remove_one::<C>(ent)))
-    }
-
-    pub fn insert<C: 'static + Send + Sync + hecs::DynamicBundle>(
-        &mut self,
-        ent: hecs::Entity,
-        components_bundle: C,
-    ) {
-        self.l8r(move |world| world.ecs.insert(ent, components_bundle).unwrap())
-    }
-
-    pub fn spawn<C: 'static + Send + Sync + hecs::DynamicBundle>(&mut self, components_bundle: C) {
-        self.l8r(move |world| drop(world.ecs.spawn(components_bundle)))
-    }
-
-    pub fn despawn(&mut self, entity: hecs::Entity) {
-        self.l8r(move |world| drop(world.ecs.despawn(entity)))
-    }
-
-    pub fn drain(&mut self) -> Vec<Box<dyn FnOnce(&mut World)>> {
-        self.0.drain(..).collect::<Vec<_>>()
-    }
-
-    pub fn now(l8rs: Vec<Box<dyn FnOnce(&mut World)>>, world: &mut World) {
-        for l8r in l8rs.into_iter() {
-            l8r(world);
-        }
-    }
-}
-
 pub struct World {
     pub ecs: hecs::World,
-    pub l8r: L8r,
+    pub l8r: L8r<World>,
     pub phys: CollisionWorld,
+}
+impl l8r::ContainsHecsWorld for World {
+    fn ecs(&self) -> &hecs::World {
+        &self.ecs
+    }
+
+    fn ecs_mut(&mut self) -> &mut hecs::World {
+        &mut self.ecs
+    }
 }
 impl World {
     fn new() -> Self {

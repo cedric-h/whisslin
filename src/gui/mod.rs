@@ -19,7 +19,7 @@ impl Docking {
     }
 
     /// Starts sending an entity back towards their home location at the end of the next frame.
-    fn dock(&self, docking_ent: Entity, l8r: &mut crate::L8r) {
+    fn dock(&self, docking_ent: Entity, l8r: &mut l8r::L8r<crate::World>) {
         l8r.insert_one(docking_ent, phys::DragTowards::new(self.home, self.speed));
     }
 }
@@ -345,7 +345,7 @@ pub fn try_slot_insert<'a>(
     inv_ent: Entity,
     item_name: &str,
     ecs: &hecs::World,
-    l8r: &mut crate::L8r,
+    l8r: &mut l8r::L8r<crate::World>,
     images: &mut graphics::images::ImageMap,
 ) -> Option<()> {
     // early return because it's perfectly fine for an Inventory not to have an InventoryWindow,
@@ -405,7 +405,7 @@ fn try_swap_slot_ents(
     left_ent: Entity,
     right_ent: Entity,
     ecs: &hecs::World,
-    l8r: &mut crate::L8r,
+    l8r: &mut l8r::L8r<crate::World>,
 ) -> Option<()> {
     let left_docking = *ecs.get::<Docking>(left_ent).ok()?;
     let right_docking = *ecs.get::<Docking>(right_ent).ok()?;
@@ -621,7 +621,7 @@ impl GuiState {
 
     fn handle_drag_drop(
         ecs: &hecs::World,
-        l8r: &mut crate::L8r,
+        l8r: &mut l8r::L8r<crate::World>,
         // the entity that is under what was being dragged, the ent in the "drop zone"
         drop_ent: Entity,
         // the entity that was being dragged and is now being released over something else.

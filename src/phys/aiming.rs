@@ -212,6 +212,7 @@ impl Wielder {
     }
 }
 
+#[derive(serde::Deserialize, Debug, Clone)]
 pub struct Weapon {
     // positioning
     pub offset: Vec2,
@@ -371,7 +372,7 @@ pub fn aiming(world: &mut World, window: &mut Window, cfg: &Config) {
         );
 
         let keyframes = &cfg
-            .weapons
+            .items
             .get(&weapon.animations)
             .unwrap_or_else(|| {
                 panic!(

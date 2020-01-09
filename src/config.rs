@@ -47,7 +47,7 @@ impl PlayerConfig {
     pub fn spawn(
         &self,
         world: &mut crate::World,
-        weapons: &FxHashMap<String, WeaponConfig>,
+        items: &FxHashMap<String, ItemConfig>,
     ) -> hecs::Entity {
         use crate::Iso2;
         use crate::{aiming, graphics, items, movement, phys};
@@ -94,11 +94,11 @@ impl PlayerConfig {
             }
 
             for _ in 0..count {
-                let ent = weapons
+                let ent = items
                     .get(name)
                     .unwrap_or_else(|| {
                         panic!(
-                            "Couldn't spawn {} {:?}{} for player's inventory: no weapon config found for {}!",
+                            "Couldn't spawn {} {:?}{} for player's inventory: no items config found for {}!",
                             count,
                             &name,
                             Some(flags)
@@ -232,45 +232,36 @@ pub mod string_range {
     }
 }
 
-#[derive(Debug, Deserialize)]
-pub struct WeaponConfig {
+#[derive(Deserialize, Debug)]
+pub struct ItemConfig {
     // appearance
     pub image: String,
     pub equip_keyframes: KeyFrames,
-    pub equip_time: u16,
-    pub readying_time: u16,
-
-    // positioning
-    pub offset: Vec2,
-    pub bottom_padding: f32,
-
-    // projectile
-    pub force_magnitude: f32,
-    pub force_decay: f32,
-    pub minimum_speed_to_damage: f32,
-    pub speed_damage_coefficient: f32,
-    pub damage: f32,
-    pub minimum_damage: usize,
-
-    // side effects
-    pub player_knock_back_force: f32,
-    pub player_knock_back_decay: f32,
+    pub weapon: Option<crate::phys::aiming::Weapon>,
+    pub hurtful: Option<crate::combat::Hurtful>,
 }
-impl WeaponConfig {
+
+impl ItemConfig {
     pub fn spawn(&self, world: &mut crate::World) -> hecs::Entity {
-        use crate::{collide, combat, graphics, phys, phys::aiming};
-        world.ecs.spawn((
-            graphics::Appearance {
-                kind: graphics::AppearanceKind::image(self.image.clone()),
-                z_offset: 0.5,
-                ..Default::default()
-            },
-            phys::collision::RigidGroups(
-                crate::CollisionGroups::new()
-                    .with_membership(&[collide::WEAPON])
-                    .with_blacklist(&[collide::PLAYER, collide::ENEMY]),
-            ),
-            phys::KnockBack {
+        use crate::{collide, graphics, phys};
+        use hecs::EntityBuilder;
+        let mut item_builder = EntityBuilder::new();
+
+        item_builder.add(graphics::Appearance {
+            kind: graphics::AppearanceKind::image(self.image.clone()),
+            z_offset: 0.5,
+            ..Default::default()
+        });
+        item_builder.add(phys::collision::RigidGroups(
+            crate::CollisionGroups::new()
+                .with_membership(&[collide::WEAPON])
+                .with_blacklist(&[collide::PLAYER, collide::ENEMY]),
+        ));
+
+        if let Some(hurtful) = &self.hurtful {
+            item_builder.add(hurtful.clone());
+
+            item_builder.add(phys::KnockBack {
                 groups: crate::CollisionGroups::new()
                     .with_membership(&[collide::WEAPON])
                     .with_whitelist(&[collide::ENEMY]),
@@ -278,37 +269,17 @@ impl WeaponConfig {
                 force_magnitude: 0.75,
                 use_force_direction: true,
                 // TODO: separate minimum_speed_to_knock_back
-                minimum_speed: Some(self.minimum_speed_to_damage),
-            },
-            combat::Hurtful {
-                raw_damage: self.damage,
-                minimum_speed: self.minimum_speed_to_damage,
-                kind: combat::HurtfulKind::Ram {
-                    speed_damage_coefficient: self.speed_damage_coefficient,
-                },
-                minimum_damage: self.minimum_damage,
-            },
-            aiming::Weapon {
-                // positioning
-                bottom_padding: self.bottom_padding,
-                offset: self.offset,
+                minimum_speed: Some(hurtful.minimum_speed),
+            });
+        }
+        if let Some(weapon) = &self.weapon {
+            item_builder.add(weapon.clone());
+        }
 
-                // animations
-                equip_time: self.equip_time,
-                readying_time: self.readying_time,
-                animations: self.image.clone(),
+        #[cfg(feature = "hot-config")]
+        item_builder.add(ReloadWithConfig);
 
-                // projectile
-                force_magnitude: self.force_magnitude,
-                force_decay: self.force_decay,
-
-                // side effects
-                player_knock_back_force: self.player_knock_back_force,
-                player_knock_back_decay: self.player_knock_back_decay,
-            },
-            #[cfg(feature = "hot-config")]
-            ReloadWithConfig,
-        ))
+        world.ecs.spawn(item_builder.build())
     }
 }
 
@@ -317,7 +288,7 @@ pub struct Config {
     pub tilemap: String,
     pub player: PlayerConfig,
     pub particles: FxHashMap<String, crate::graphics::particle::Emitter>,
-    pub weapons: FxHashMap<String, WeaponConfig>,
+    pub items: FxHashMap<String, ItemConfig>,
     pub tiles: FxHashMap<String, TileProperty>,
     pub sprite_sheets: FxHashMap<String, crate::graphics::sprite_sheet::Entry>,
 }
@@ -346,7 +317,7 @@ impl Config {
     }
 
     pub fn spawn(&self, world: &mut crate::World) -> hecs::Entity {
-        let player = self.player.spawn(world, &self.weapons);
+        let player = self.player.spawn(world, &self.items);
 
         // attach the inventory GUI window to the player
         let window = crate::gui::build_inventory_gui_entities(world, player);
