@@ -372,15 +372,14 @@ pub fn aiming(world: &mut World, window: &mut Window, cfg: &Config) {
         );
 
         let keyframes = &cfg
-            .items
+            .animations
             .get(&weapon.animations)
             .unwrap_or_else(|| {
                 panic!(
-                    "Can't find keyframes to animate; No weapon config could be found for {}!",
+                    "Can't find keyframes to animate; No animation config could be found for {}!",
                     weapon.animations
                 )
-            })
-            .equip_keyframes;
+            });
         wielder.advance_state(mouse[MouseButton::Left].is_down(), &weapon);
         let frame = weapon.animation_frame(delta, wielder.state, keyframes)?;
 

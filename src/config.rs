@@ -236,7 +236,6 @@ pub mod string_range {
 pub struct ItemConfig {
     // appearance
     pub image: String,
-    pub equip_keyframes: KeyFrames,
     pub weapon: Option<crate::phys::aiming::Weapon>,
     pub hurtful: Option<crate::combat::Hurtful>,
 }
@@ -287,6 +286,7 @@ impl ItemConfig {
 pub struct Config {
     pub tilemap: String,
     pub player: PlayerConfig,
+    pub animations: FxHashMap<String, KeyFrames>,
     pub particles: FxHashMap<String, crate::graphics::particle::Emitter>,
     pub items: FxHashMap<String, ItemConfig>,
     pub tiles: FxHashMap<String, TileProperty>,
