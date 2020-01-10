@@ -19,63 +19,54 @@ GrGrGrGrGrGrGrGrGrDiGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGr
 GrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGrGr
 """
 
-[items.spear]
-# appearance
-image = "spear"
-equip_keyframes = [
+[animations]
+spear_equip = [
 	{ time = 0.0, pos = [-0.2, -0.4], rot = -25, bottom_padding = -0.5 },
 	{ time = 0.2, pos = [0.5, -0.8], rot = -45, bottom_padding = -0.4 },
 	{ time = 0.4, pos = [0.6, -0.9], rot = -200, bottom_padding = -0.6 },
 	{ time = 0.6, pos = [0.0, -0.7], rot = -350, bottom_padding = -0.3 },
 	{ time = 0.7, rot = 25, bottom_padding = 0.2}
 ]
-	[items.spear.weapon]
+
+[items.spear]
+image = "spear"
+[items.spear.weapon]
 	# default (readied) positioning
 	bottom_padding = 0.325
 	offset = [0.115, -0.385]
 	# animations
 	readying_time = 60
 	equip_time = 60
-	animations = "spear"
+	animations = "spear_equip"
 	# projectile
 	force_magnitude = 2.125
 	force_decay = 0.75
 	# side effects
 	player_knock_back_force = 0.5
 	player_knock_back_decay = 0.75
-
-	[items.spear.hurtful]
+[items.spear.hurtful]
 	minimum_speed = 0.05
 	raw_damage = 1
 	minimum_damage = 1
 	kind = { Ram = { speed_damage_coefficient = 1.0 } }
 
 [items.flower_power]
-# appearance
 image = "flower_power"
-equip_keyframes = [
-	{ time = 0.0, pos = [-0.2, -0.4], rot = -25, bottom_padding = -0.5 },
-	{ time = 0.2, pos = [0.5, -0.8], rot = -45, bottom_padding = -0.4 },
-	{ time = 0.4, pos = [0.6, -0.9], rot = -200, bottom_padding = -0.6 },
-	{ time = 0.6, pos = [0.0, -0.7], rot = -350, bottom_padding = -0.3 },
-	{ time = 0.7, rot = 25, bottom_padding = 0.2}
-]
-	[items.flower_power.weapon]
+[items.flower_power.weapon]
 	# default (readied) positioning
 	bottom_padding = 0.325
 	offset = [0.115, -0.385]
 	# animations
 	readying_time = 60
 	equip_time = 60
-	animations = "flower_power"
+	animations = "spear_equip"
 	# projectile
 	force_magnitude = 0.325
 	force_decay = 0.98
 	# side effects
 	player_knock_back_force = 0.5
 	player_knock_back_decay = 0.75
-
-	[items.flower_power.hurtful]
+[items.flower_power.hurtful]
 	minimum_speed = 0.1
 	raw_damage = 1
 	minimum_damage = 2
