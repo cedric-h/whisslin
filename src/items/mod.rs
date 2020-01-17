@@ -97,7 +97,7 @@ pub fn inventory_inserts(world: &mut World) {
         l8r.remove_one::<InventoryConsumeEquipped>(inv_ent);
     }
 
-    let scheduled_world_edits = world.l8r.drain();
+    let scheduled_world_edits: Vec<_> = world.l8r.drain(..).collect();
     crate::L8r::now(scheduled_world_edits, world);
 }
 

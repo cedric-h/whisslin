@@ -238,6 +238,7 @@ pub struct ItemConfig {
     pub image: String,
     pub weapon: Option<crate::phys::aiming::Weapon>,
     pub hurtful: Option<crate::combat::Hurtful>,
+    pub growth_stages: Option<Vec<crate::farm::GrowthStage>>,
 }
 
 impl ItemConfig {

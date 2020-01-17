@@ -3,6 +3,10 @@ use crate::{collide, CollisionGroups, Iso2, PhysHandle, Vec2};
 
 pub struct Farmable;
 
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct GrowthStage {
+}
+
 /// Entities with this component will be dragged toward the center of the tile the player's mouse
 /// is over, if that tile can be planted on and the player is holding a seed.
 pub struct PlantingCursor;

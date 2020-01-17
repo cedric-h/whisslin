@@ -261,12 +261,12 @@ impl State for Game {
         combat::hurtful_damage(&mut self.world);
         combat::health::remove_out_of_health(&mut self.world);
 
-        let scheduled_world_edits = self.world.l8r.drain();
+        let scheduled_world_edits: Vec<_> = self.world.l8r.drain(..).collect();
         L8r::now(scheduled_world_edits, &mut self.world);
 
         self.particle_manager.emit_particles(&mut self.world);
 
-        let scheduled_world_edits = self.world.l8r.drain();
+        let scheduled_world_edits: Vec<_> = self.world.l8r.drain(..).collect();
         L8r::now(scheduled_world_edits, &mut self.world);
 
         death_particles(&mut self.world);

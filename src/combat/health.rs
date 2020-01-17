@@ -3,7 +3,8 @@
 /// Symbolically represents how close something is to dying.
 ///
 /// If this value reaches 0, the Entity associated with it is deleted.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize)]
+#[serde(from = "usize")]
 pub enum Health {
     Points(usize),
     Dead,
@@ -83,6 +84,14 @@ impl std::ops::Add for Health {
 impl std::ops::AddAssign for Health {
     fn add_assign(&mut self, other: Self) {
         *self = *self + other;
+    }
+}
+impl From<usize> for Health {
+    fn from(num: usize) -> Self {
+        match num {
+            0 => Health::Dead,
+            x => Health::Points(x)
+        }
     }
 }
 

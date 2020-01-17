@@ -15,8 +15,8 @@ hot-config = ["notify", "crossbeam-channel"]
 quicksilver = { git = "https://github.com/cedric-h/quicksilver.git", branch = "update-rustsim-crates" }
 
 # ecs
-hecs = "0.2.7"
-l8r = "0.1.1"
+hecs = { git = "https://github.com/Ralith/hecs.git" }
+l8r = { git = "https://github.com/cedric-h/l8r.git" }
 
 # maffs
 ncollide2d = "0.21.0"
@@ -31,11 +31,11 @@ rand = "0.7.2"
 
 # keyframe live reload
 [dependencies.notify]
-version = "5.0.0-pre.1"
+version = "=5.0.0-pre.1"
 optional = true
 [dependencies.crossbeam-channel]
 version = "0.3.8"
 optional = true
 
 [patch.crates-io]
-nalgebra = { git = "https://github.com/rustsim/nalgebra.git", branch = "fix_vector_slerp" }
+nalgebra = { git = "https://github.com/rustsim/nalgebra.git", branch = "dev" }
