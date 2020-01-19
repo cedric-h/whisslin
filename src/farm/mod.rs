@@ -4,15 +4,23 @@ use crate::{collide, CollisionGroups, Iso2, PhysHandle, Vec2};
 pub struct Farmable;
 
 #[derive(Debug, Clone, serde::Deserialize)]
-pub struct GrowthStage {
+/// Replaces this entity with the given Item (as described in the config file)
+/// after the supplied duration.
+pub struct Growth {
+    /// Indicates which item in the config file should replace this entity
+    /// when this one completes its growth.
+    after: String,
+
+    /// How long this growth stage lasts, in frames.
+    duration: usize,
 }
 
 /// Entities with this component will be dragged toward the center of the tile the player's mouse
 /// is over, if that tile can be planted on and the player is holding a seed.
 pub struct PlantingCursor;
 
-pub fn build_planting_cursor_entity(world: &mut crate::World, config: &crate::config::Config) {
-    let mut emitter = config.particles["planting_cursor"].clone();
+pub fn build_planting_cursor_entity(world: &mut crate::World) {
+    let mut emitter = world.config.particles["planting_cursor"].clone();
     emitter.offset_direction_bounds(Vec2::y_axis());
     emitter.status = particle::EmitterStatus::Disabled;
 
@@ -25,6 +33,53 @@ pub fn build_planting_cursor_entity(world: &mut crate::World, config: &crate::co
             .with_membership(&[])
             .with_whitelist(&[]),
     );
+}
+
+pub fn growing(world: &mut crate::World) -> Option<()> {
+    let ecs = &world.ecs;
+    let l8r = &mut world.l8r;
+
+    for (growing_ent, growth) in &mut ecs.query::<&mut Growth>() {
+        growth.duration -= 1;
+        if growth.duration == 0 {
+            let after = growth.after.clone();
+            l8r.l8r(move |world: &mut crate::World| {
+                let config = std::rc::Rc::clone(&world.config);
+
+                let old_h = world.ecs.get(growing_ent).ok().as_deref().map(|&PhysHandle(x)| x.clone());
+                world.l8r.insert_one(growing_ent, crate::Dead);
+
+                let next_stage_ent = config
+                    .items
+                    .get(&after)
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "Growth[{:?}] referenced invalid {:?} item!",
+                            growing_ent, after
+                        )
+                    })
+                    .spawn(world);
+
+                if let Some(old_obj) = old_h.and_then(|h| world.phys.collision_object(h)) {
+                    let old_pos = old_obj.position().clone();
+                    let old_shape = old_obj
+                            .shape()
+                            .as_shape::<ncollide2d::shape::Cuboid<f32>>()
+                            .clone()
+                            .unwrap_or_else(|| panic!(
+                                "PhysHandle[{:?}] had PhysHandle component but no Cuboid shape!", growing_ent
+                            ))
+                            .clone();
+                    let old_groups = old_obj.collision_groups().clone();
+                    drop(old_obj);
+
+                    world.add_hitbox(next_stage_ent, old_pos, old_shape, old_groups);
+                }
+            })
+        }
+    }
+
+    Some(())
 }
 
 pub fn planting(

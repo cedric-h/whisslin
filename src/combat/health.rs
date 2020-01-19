@@ -90,7 +90,7 @@ impl From<usize> for Health {
     fn from(num: usize) -> Self {
         match num {
             0 => Health::Dead,
-            x => Health::Points(x)
+            x => Health::Points(x),
         }
     }
 }

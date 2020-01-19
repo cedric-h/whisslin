@@ -238,7 +238,7 @@ pub struct ItemConfig {
     pub image: String,
     pub weapon: Option<crate::phys::aiming::Weapon>,
     pub hurtful: Option<crate::combat::Hurtful>,
-    pub growth_stages: Option<Vec<crate::farm::GrowthStage>>,
+    pub growth: Option<crate::farm::Growth>,
 }
 
 impl ItemConfig {
@@ -274,6 +274,9 @@ impl ItemConfig {
         }
         if let Some(weapon) = &self.weapon {
             item_builder.add(weapon.clone());
+        }
+        if let Some(growth) = &self.growth {
+            item_builder.add(growth.clone());
         }
 
         #[cfg(feature = "hot-config")]

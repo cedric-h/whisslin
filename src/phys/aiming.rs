@@ -338,7 +338,7 @@ impl Weapon {
     }
 }
 
-pub fn aiming(world: &mut World, window: &mut Window, cfg: &Config) {
+pub fn aiming(world: &mut World, window: &mut Window) {
     use crate::graphics;
 
     type WieldQuery<'a> = (
@@ -350,6 +350,7 @@ pub fn aiming(world: &mut World, window: &mut Window, cfg: &Config) {
 
     // manually splitting the borrow to appease rustc
     let ecs = &world.ecs;
+    let cfg = &world.config;
     let l8r = &mut world.l8r;
     let phys = &mut world.phys;
 
@@ -371,15 +372,12 @@ pub fn aiming(world: &mut World, window: &mut Window, cfg: &Config) {
             mouse.pos().into_vector() - (wielder_iso.translation.vector + weapon.offset),
         );
 
-        let keyframes = &cfg
-            .animations
-            .get(&weapon.animations)
-            .unwrap_or_else(|| {
-                panic!(
-                    "Can't find keyframes to animate; No animation config could be found for {}!",
-                    weapon.animations
-                )
-            });
+        let keyframes = &cfg.animations.get(&weapon.animations).unwrap_or_else(|| {
+            panic!(
+                "Can't find keyframes to animate; No animation config could be found for {}!",
+                weapon.animations
+            )
+        });
         wielder.advance_state(mouse[MouseButton::Left].is_down(), &weapon);
         let frame = weapon.animation_frame(delta, wielder.state, keyframes)?;
 

@@ -1,5 +1,6 @@
 // #![feature(array_value_iter)]
 
+use l8r::L8r;
 use nalgebra as na;
 use ncollide2d::shape::Cuboid;
 use quicksilver::{
@@ -8,7 +9,6 @@ use quicksilver::{
     lifecycle::{run, Asset, Settings, State, Window},
     Result,
 };
-use l8r::L8r;
 use std::time::Instant;
 
 type Vec2 = na::Vector2<f32>;
@@ -55,6 +55,7 @@ pub struct World {
     pub ecs: hecs::World,
     pub l8r: L8r<World>,
     pub phys: CollisionWorld,
+    pub config: std::rc::Rc<ConfigHandler>,
 }
 impl l8r::ContainsHecsWorld for World {
     fn ecs(&self) -> &hecs::World {
@@ -71,6 +72,7 @@ impl World {
             ecs: hecs::World::new(),
             l8r: L8r::new(),
             phys: CollisionWorld::new(0.02),
+            config: std::rc::Rc::new(ConfigHandler::new().unwrap_or_else(|e| panic!("{}", e))),
         }
     }
 
@@ -114,7 +116,6 @@ struct Game {
     world: World,
     images: ImageMap,
     font: Asset<Font>,
-    config: ConfigHandler,
     particle_manager: graphics::particle::Manager,
     gui: gui::GuiState,
     sprite_sheet_animation_failed: bool,
@@ -122,10 +123,10 @@ struct Game {
 
 impl State for Game {
     fn new() -> Result<Game> {
-        let config = ConfigHandler::new().unwrap_or_else(|e| panic!("{}", e));
         let images = fetch_images();
 
         let mut world = World::new();
+        let config = std::rc::Rc::clone(&world.config);
 
         let player = config.spawn(&mut world);
         let player_loc = (|| {
@@ -140,6 +141,20 @@ impl State for Game {
             )
         })()
         .unwrap();
+
+        let spear_leaflet = config
+            .items
+            .get("spear_leaflet")
+            .expect("no spear_leaflet in config")
+            .spawn(&mut world);
+        world.add_hitbox(
+            spear_leaflet,
+            Iso2::translation(15.0, 8.5),
+            ncollide2d::shape::Cuboid::new(Vec2::repeat(0.5)),
+            CollisionGroups::new()
+                .with_membership(&[])
+                .with_whitelist(&[]),
+        );
 
         for i in 0..4 {
             let fence = world.ecs.spawn((
@@ -174,9 +189,9 @@ impl State for Game {
                     ..Default::default()
                 },
                 combat::health::Health::new(10),
-                combat::DamageReceivedParticleEmitters(vec![
-                    config.particles["blood_splash"].clone()
-                ]),
+                combat::DamageReceivedParticleEmitters(vec![config.particles
+                    ["blood_splash"]
+                    .clone()]),
                 DeathParticleEmitters(vec![config.particles["arterial_spray"].clone()]),
                 phys::collision::RigidGroups(base_group.with_blacklist(&knock_back_not_collide)),
                 phys::Charge::new(0.05),
@@ -198,14 +213,13 @@ impl State for Game {
         }
 
         // Tilemap stuffs
-        tilemap::build_map_entities(&mut world, &config);
-        farm::build_planting_cursor_entity(&mut world, &config);
+        tilemap::build_map_entities(&mut world);
+        farm::build_planting_cursor_entity(&mut world);
 
         Ok(Game {
             world,
             images,
             font: Asset::new(Font::load("min.ttf")),
-            config,
             particle_manager: Default::default(),
             gui: gui::GuiState::new(),
             last_render: Instant::now(),
@@ -218,19 +232,17 @@ impl State for Game {
         let elapsed = now.duration_since(self.last_render);
 
         if !self.sprite_sheet_animation_failed {
-            graphics::sprite_sheet::animate(&mut self.world, &self.config, elapsed).unwrap_or_else(
-                |e| {
+            graphics::sprite_sheet::animate(&mut self.world, elapsed)
+                .unwrap_or_else(|e| {
                     println!("Disabling sprite sheet animation: {}", e);
                     self.sprite_sheet_animation_failed = true;
-                },
-            );
+                });
         }
         graphics::render(
             window,
             &self.world,
             &mut self.images,
             &mut self.font,
-            &self.config,
         )?;
 
         self.last_render = now;
@@ -239,7 +251,7 @@ impl State for Game {
 
     fn update(&mut self, window: &mut Window) -> Result<()> {
         #[cfg(feature = "hot-config")]
-        self.config.reload(&mut self.world);
+        self.world.config.reload(&mut self.world);
 
         graphics::fade::fade(&mut self.world);
 
@@ -248,13 +260,15 @@ impl State for Game {
         phys::chase(&mut self.world);
         collision::collision(&mut self.world);
 
+        farm::growing(&mut self.world);
+
         let mouse = window.mouse();
         let draggable_under_mouse = self.gui.draggable_under(mouse.pos(), &self.world);
         if draggable_under_mouse.is_some() || self.gui.is_dragging() {
             self.gui
                 .update_draggable_under_mouse(&mut self.world, draggable_under_mouse, &mouse);
         } else {
-            aiming::aiming(&mut self.world, window, &self.config);
+            aiming::aiming(&mut self.world, window);
             farm::planting(&mut self.world, window);
         }
 
