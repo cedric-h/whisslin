@@ -150,7 +150,12 @@ impl Inventory {
         Some(popped)
     }
 
-    fn insert(&mut self, item_name: String, item_ent: hecs::Entity, l8r: &mut l8r::L8r<crate::World>) {
+    fn insert(
+        &mut self,
+        item_name: String,
+        item_ent: hecs::Entity,
+        l8r: &mut l8r::L8r<crate::World>,
+    ) {
         // now that it's becoming an item, we want to yank it out of the physics world.
         // doing that ensures that it's not rendered or collided with
         // or any of that other icky stuff.

@@ -161,7 +161,6 @@ pub fn render(
     world: &World,
     images: &mut ImageMap,
     font: &mut Asset<Font>,
-    cfg: &Config,
 ) -> Result<()> {
     window.set_view(View::new(Rectangle::new_sized(DIMENSIONS / TILE_SIZE)));
     window.clear(colors::DISCORD)?;
@@ -240,7 +239,7 @@ pub fn render(
                             .unwrap_or_else(|| panic!("Couldn't find an image with name: {}", name))
                             .execute(|src| {
                                 let (img, rect) = if let (Some(entry), Some(index)) =
-                                    (cfg.sprite_sheets.get(name), sheet_index)
+                                    (world.config.sprite_sheets.get(name), sheet_index)
                                 {
                                     (
                                         src.subimage(Rectangle::new(

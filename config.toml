@@ -28,6 +28,22 @@ spear_equip = [
 	{ time = 0.7, rot = 25, bottom_padding = 0.2}
 ]
 
+[items.spear_leaflet]
+image = "spear_leaflet"
+growth = { after = "spear_sapling", duration = 60 }
+
+[items.spear_sapling]
+image = "spear_sapling"
+growth = { after = "spear_sprout", duration = 60 }
+
+[items.spear_sprout]
+image = "spear_sprout"
+growth = { after = "spear_strong", duration = 60 }
+
+[items.spear_strong]
+image = "spear_strong"
+growth = { after = "spear", duration = 60 }
+
 [items.spear]
 image = "spear"
 [items.spear.weapon]

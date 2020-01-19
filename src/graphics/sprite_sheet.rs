@@ -58,13 +58,14 @@ impl Index {
     }
 }
 
-pub fn animate(world: &mut World, cfg: &Config, elapsed: Duration) -> Result<(), Error> {
+pub fn animate(world: &mut World, elapsed: Duration) -> Result<(), Error> {
     for (_, (anim, index, appearance)) in &mut world
         .ecs
         .query::<(&mut Animation, &mut Index, &Appearance)>()
     {
         let appearance_name = appearance.kind.name();
-        let entry = cfg
+        let entry = world
+            .config
             .sprite_sheets
             .get(appearance_name)
             .ok_or_else(|| Error::NoEntry(appearance_name.into()))?;
