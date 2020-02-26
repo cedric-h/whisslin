@@ -38,4 +38,4 @@ version = "0.3.8"
 optional = true
 
 [patch.crates-io]
-nalgebra = { git = "https://github.com/rustsim/nalgebra.git", branch = "dev" }
+nalgebra = { git = "https://github.com/rustsim/nalgebra.git", branch = "master" }
