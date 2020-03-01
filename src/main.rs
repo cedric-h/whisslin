@@ -176,14 +176,14 @@ impl State for Game {
             GameState::FARMING => self.farming_update(window),
             GameState::COMBAT => self.combat_update(window),
         };
-        match transition {
-            None => (),
-            Some(GameState::FARMING) => self.farming_exit(window),
-            Some(GameState::COMBAT) => self.combat_exit(window),
-        }
+
         match transition {
             None => (),
             Some(state) => {
+                match self.state {
+                    GameState::FARMING => self.farming_exit(window),
+                    GameState::COMBAT => self.combat_exit(window),
+                }
                 self.state = state;
                 self.entered = true;
             }
@@ -235,10 +235,12 @@ impl Game {
         }
 
         // Tilemap stuffs
-        tilemap::build_map_entities(world);
+        tilemap::build_map_entities(world, "farm");
         farm::build_planting_cursor_entity(world);
     }
-    fn farming_exit(&mut self, _window: &mut Window) {}
+    fn farming_exit(&mut self, _window: &mut Window) {
+        tilemap::unload_map_entities(&mut self.world);
+    }
     fn farming_update(&mut self, window: &mut Window) -> Option<GameState> {
         #[cfg(feature = "hot-config")]
         self.world.config.reload(&mut self.world);
@@ -347,8 +349,11 @@ impl Game {
                 base_group,
             );
         }
+        tilemap::build_map_entities(world, "combat");
     }
-    fn combat_exit(&mut self, _window: &mut Window) {}
+    fn combat_exit(&mut self, _window: &mut Window) {
+        tilemap::unload_map_entities(&mut self.world);
+    }
     fn combat_update(&mut self, window: &mut Window) -> Option<GameState> {
         #[cfg(feature = "hot-config")]
         self.world.config.reload(&mut self.world);
@@ -367,6 +372,7 @@ impl Game {
                 .update_draggable_under_mouse(&mut self.world, draggable_under_mouse, &mouse);
         } else {
             aiming::aiming(&mut self.world, window);
+            farm::planting(&mut self.world, window);
         }
 
         combat::hurtful_damage(&mut self.world);

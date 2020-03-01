@@ -1,4 +1,3 @@
-use crate::config::Config;
 use crate::items::Inventory;
 use crate::World;
 use crate::{na, Iso2, PhysHandle, Vec2};

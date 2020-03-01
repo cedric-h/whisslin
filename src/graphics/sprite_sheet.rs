@@ -1,5 +1,4 @@
 use super::Appearance;
-use crate::config::Config;
 use crate::World;
 use crate::{na, Vec2};
 use std::time::Duration;

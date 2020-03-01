@@ -52,6 +52,7 @@ impl PlayerConfig {
         use crate::Iso2;
         use crate::{aiming, graphics, items, movement, phys};
 
+        #[cfg(feature = "hot-config")]
         let player = world.ecs.spawn((
             graphics::Appearance {
                 kind: graphics::AppearanceKind::image(&self.image),
@@ -62,8 +63,19 @@ impl PlayerConfig {
             items::Inventory::new(),
             graphics::sprite_sheet::Animation::new(),
             graphics::sprite_sheet::Index::new(),
-            #[cfg(feature = "hot-config")]
             ReloadWithConfig,
+        ));
+        #[cfg(not(feature = "hot-config"))]
+        let player = world.ecs.spawn((
+            graphics::Appearance {
+                kind: graphics::AppearanceKind::image(&self.image),
+                ..Default::default()
+            },
+            movement::PlayerControlled { speed: self.speed },
+            aiming::Wielder::new(),
+            items::Inventory::new(),
+            graphics::sprite_sheet::Animation::new(),
+            graphics::sprite_sheet::Index::new(),
         ));
         world.add_hitbox(
             player,
@@ -287,8 +299,13 @@ impl ItemConfig {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct TilemapDetails {
+    pub layout: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct Config {
-    pub tilemap: String,
+    pub tilemaps: FxHashMap<String, TilemapDetails>,
     pub player: PlayerConfig,
     pub animations: FxHashMap<String, KeyFrames>,
     pub particles: FxHashMap<String, crate::graphics::particle::Emitter>,

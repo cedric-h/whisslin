@@ -1,10 +1,11 @@
 use crate::{collide, graphics};
 
-pub fn build_map_entities(world: &mut crate::World) {
-    let config = std::rc::Rc::clone(&world.config);
+pub struct Tile;
 
-    config
-        .tilemap
+pub fn build_map_entities(world: &mut crate::World, map_name: &str) {
+    let conf_test = world.config.tilemaps[map_name].layout.clone();
+
+    conf_test
         .split_whitespace()
         .enumerate()
         .for_each(|(y, row)| {
@@ -21,7 +22,7 @@ pub fn build_map_entities(world: &mut crate::World) {
                         alignment: graphics::Alignment::Center,
                         z_offset: -1000.0,
                         ..Default::default()
-                    },));
+                    }, Tile{}));
 
                     let pos = crate::Iso2::translation(0.5 + (x as f32), 0.5 + (y as f32));
 
@@ -65,4 +66,30 @@ pub fn build_map_entities(world: &mut crate::World) {
                     }
                 })
         })
+}
+
+pub fn unload_map_entities(world: &mut crate::World) {
+    let to_unload = world
+        .ecs
+        .query::<&Tile>()
+        .iter()
+        .map(|(id, _)| id)
+        .collect::<Vec<hecs::Entity>>();
+    let to_unload_physic_handles = world
+        .ecs
+        .query::<(&Tile, &crate::PhysHandle)>()
+        .iter()
+        .map(|(_, (_, &crate::PhysHandle(handle)))| handle)
+        .collect::<Vec<_>>();
+
+    for ent in to_unload.into_iter() {
+        world.ecs.despawn(ent).unwrap_or_else(|err| {
+            println!(
+                "unload_map: Couldn't delete entity[{:?}] marked with Tile: {}",
+                ent, err
+            )
+        });
+    }
+
+    world.phys.remove(&to_unload_physic_handles);
 }

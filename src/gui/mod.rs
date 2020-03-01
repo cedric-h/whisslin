@@ -613,7 +613,7 @@ impl GuiState {
             }
             // if there isn't a second ent that we're dropping on top of, however,
             // the item slot was released over the void, we need to drop the items.
-            else if let Some(released_ent) = self.dragging_ent {
+            else if let Some(_released_ent) = self.dragging_ent {
             }
             self.last_mouse_down_pos = None;
         };

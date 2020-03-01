@@ -8,7 +8,6 @@ use images::ImageMap;
 #[cfg(feature = "hitbox-outlines")]
 mod hitbox_outlines;
 
-use crate::config::Config;
 use crate::World;
 use crate::{na, Iso2, Vec2};
 use crate::{DIMENSIONS, TILE_SIZE};
