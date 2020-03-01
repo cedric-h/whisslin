@@ -9,11 +9,10 @@ pub fn face_cursor(
     mouse: &Mouse,
     collision_world: &CollisionWorld,
     appearance: &mut crate::graphics::Appearance,
-    phys_handle: &PhysHandle,
+    PhysHandle(actual_handle): &PhysHandle,
 ) {
-    let &PhysHandle(actual_handle) = phys_handle;
     let iso2 = collision_world
-        .collision_object(actual_handle)
+        .collision_object(*actual_handle)
         .unwrap()
         .position();
 

@@ -54,6 +54,7 @@ use config::ConfigHandler;
 mod tilemap;
 use phys::{aiming, collision, movement};
 mod graphics;
+mod props;
 use graphics::images::{fetch_images, ImageMap};
 
 pub struct World {
@@ -219,22 +220,7 @@ impl Game {
         );
 
         for i in 0..4 {
-            let fence = world.ecs.spawn((
-                graphics::Appearance {
-                    kind: graphics::AppearanceKind::image("smol_fence"),
-                    z_offset: -0.01,
-                    ..Default::default()
-                },
-                collision::CollisionStatic,
-            ));
-            world.add_hitbox(
-                fence,
-                Iso2::translation(8.0 + 2.0 * i as f32, 5.25),
-                Cuboid::new(Vec2::new(1.0, 0.2) / 2.0),
-                CollisionGroups::new()
-                    .with_membership(&[collide::WORLD])
-                    .with_whitelist(&[collide::PLAYER, collide::ENEMY]),
-            );
+            props::spawn_fence(world, Iso2::translation(8.0 + 2.0 * i as f32, 5.25));
         }
 
         // Tilemap stuffs
@@ -243,6 +229,7 @@ impl Game {
     }
     fn farming_exit(&mut self, _window: &mut Window) {
         tilemap::unload_map_entities(&mut self.world);
+        props::despawn_props(&mut self.world);
     }
     fn farming_update(&mut self, window: &mut Window) -> Option<GameState> {
         #[cfg(feature = "hot-config")]
@@ -365,6 +352,7 @@ impl Game {
     }
     fn combat_exit(&mut self, _window: &mut Window) {
         tilemap::unload_map_entities(&mut self.world);
+        props::despawn_props(&mut self.world);
     }
     fn combat_update(&mut self, window: &mut Window) -> Option<GameState> {
         #[cfg(feature = "hot-config")]
