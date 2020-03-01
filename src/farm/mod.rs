@@ -46,7 +46,12 @@ pub fn growing(world: &mut crate::World) -> Option<()> {
             l8r.l8r(move |world: &mut crate::World| {
                 let config = std::rc::Rc::clone(&world.config);
 
-                let old_h = world.ecs.get(growing_ent).ok().as_deref().map(|&PhysHandle(x)| x.clone());
+                let old_h = world
+                    .ecs
+                    .get(growing_ent)
+                    .ok()
+                    .as_deref()
+                    .map(|&PhysHandle(x)| x.clone());
                 world.l8r.insert_one(growing_ent, crate::Dead);
 
                 let next_stage_ent = config
@@ -63,13 +68,16 @@ pub fn growing(world: &mut crate::World) -> Option<()> {
                 if let Some(old_obj) = old_h.and_then(|h| world.phys.collision_object(h)) {
                     let old_pos = old_obj.position().clone();
                     let old_shape = old_obj
-                            .shape()
-                            .as_shape::<ncollide2d::shape::Cuboid<f32>>()
-                            .clone()
-                            .unwrap_or_else(|| panic!(
-                                "PhysHandle[{:?}] had PhysHandle component but no Cuboid shape!", growing_ent
-                            ))
-                            .clone();
+                        .shape()
+                        .as_shape::<ncollide2d::shape::Cuboid<f32>>()
+                        .clone()
+                        .unwrap_or_else(|| {
+                            panic!(
+                                "PhysHandle[{:?}] had PhysHandle component but no Cuboid shape!",
+                                growing_ent
+                            )
+                        })
+                        .clone();
                     let old_groups = old_obj.collision_groups().clone();
                     drop(old_obj);
 
