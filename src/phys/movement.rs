@@ -31,7 +31,7 @@ pub fn movement(world: &mut World, window: &mut Window) {
         .normalize();
 
     if move_vec.len2() > 0.0 {
-        for (_, (&PhysHandle(h), &PlayerControlled { speed }, appearance)) in ecs
+        for (_, (&PhysHandle(h), &PlayerControlled { speed }, _appearance)) in ecs
             .query::<(&PhysHandle, &PlayerControlled, &mut Appearance)>()
             .iter()
         {
@@ -45,8 +45,6 @@ pub fn movement(world: &mut World, window: &mut Window) {
                     iso.translation.vector += vel;
                     iso
                 });
-
-                appearance.flip_x = move_vec.x < 0.0;
 
                 Some(())
             })();

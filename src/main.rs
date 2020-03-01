@@ -13,6 +13,9 @@ use quicksilver::{
 };
 use std::time::Instant;
 
+use crate::graphics::Appearance;
+use crate::phys::{face_cursor, face_cursor::FacesCursor};
+
 type Vec2 = na::Vector2<f32>;
 type Iso2 = na::Isometry2<f32>;
 type CollisionWorld = ncollide2d::world::CollisionWorld<f32, hecs::Entity>;
@@ -266,6 +269,15 @@ impl Game {
 
         combat::hurtful_damage(&mut self.world);
         combat::health::remove_out_of_health(&mut self.world);
+
+        for (_, (appearance, phys_handle, _)) in self
+            .world
+            .ecs
+            .query::<(&mut Appearance, &PhysHandle, &FacesCursor)>()
+            .iter()
+        {
+            face_cursor(&window.mouse(), &self.world.phys, appearance, phys_handle);
+        }
 
         let scheduled_world_edits: Vec<_> = self.world.l8r.drain(..).collect();
         L8r::now(scheduled_world_edits, &mut self.world);

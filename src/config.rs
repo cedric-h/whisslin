@@ -1,4 +1,4 @@
-use crate::phys::aiming::KeyFrames;
+use crate::phys::{aiming::KeyFrames, face_cursor::FacesCursor};
 use crate::Vec2;
 use fxhash::FxHashMap;
 use serde::Deserialize;
@@ -63,6 +63,7 @@ impl PlayerConfig {
             items::Inventory::new(),
             graphics::sprite_sheet::Animation::new(),
             graphics::sprite_sheet::Index::new(),
+            FacesCursor,
             ReloadWithConfig,
         ));
         #[cfg(not(feature = "hot-config"))]
@@ -76,6 +77,7 @@ impl PlayerConfig {
             items::Inventory::new(),
             graphics::sprite_sheet::Animation::new(),
             graphics::sprite_sheet::Index::new(),
+            FacesCursor,
         ));
         world.add_hitbox(
             player,
