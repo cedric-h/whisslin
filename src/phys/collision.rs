@@ -107,8 +107,8 @@ pub fn collision(world: &mut World) {
         }
     });
 
-    for (collided_ent, (Contacts(contacts), &PhysHandle(collided_h), rigid_groups)) in ecs
-        .query::<(&_, &_, Option<&RigidGroups>)>()
+    for (collided_ent, (Contacts(contacts), collided_h, rigid_groups)) in ecs
+        .query::<(&_, &PhysHandle, Option<&RigidGroups>)>()
         .without::<CollisionStatic>()
         .iter()
     {
@@ -117,7 +117,7 @@ pub fn collision(world: &mut World) {
         for &other_ent in contacts.iter() {
             // if the recorded contact is with an entity that can't be found,
             // just ignore it, they've probably been deleted or something.
-            if let Ok(PhysHandle(other_h)) = ecs.get(other_ent).map(|x| *x) {
+            if let Ok(other_h) = ecs.get(other_ent).map(|x| x) {
                 if let (Ok(other_rigid_groups), Some(rigid_groups)) =
                     (ecs.get::<RigidGroups>(other_ent), rigid_groups)
                 {
@@ -126,14 +126,14 @@ pub fn collision(world: &mut World) {
                     }
                 };
 
-                if let Some((_, _, _, contacts)) = phys.contact_pair(collided_h, other_h, true) {
+                if let Some((_, _, _, contacts)) = phys.contact_pair(*collided_h, *other_h, true) {
                     let deepest = contacts.deepest_contact().unwrap().contact;
                     contacted_displacement -= deepest.normal.into_inner() * deepest.depth;
                 }
             }
         }
 
-        let obj = phys.get_mut(collided_h).unwrap_or_else(|| {
+        let obj = phys.get_mut(*collided_h).unwrap_or_else(|| {
             panic!(
                 "Contacted Entity[{:?}] has no Collision Object!",
                 collided_ent
@@ -154,7 +154,7 @@ pub fn clear_dead_collision_objects(world: &mut World) {
     phys.remove(
         &ecs.query::<(&PhysHandle, &crate::Dead)>()
             .iter()
-            .map(|(_, (&PhysHandle(h), _))| h)
+            .map(|(_, (h, _))| *h)
             .collect::<Vec<_>>(),
     );
 }

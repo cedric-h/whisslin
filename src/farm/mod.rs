@@ -48,10 +48,10 @@ pub fn growing(world: &mut crate::World) -> Option<()> {
 
                 let old_h = world
                     .ecs
-                    .get(growing_ent)
+                    .get::<PhysHandle>(growing_ent)
                     .ok()
                     .as_deref()
-                    .map(|&PhysHandle(x)| x.clone());
+                    .map(|x| x.clone());
                 world.l8r.insert_one(growing_ent, crate::Dead);
 
                 let next_stage_ent = config
@@ -96,8 +96,8 @@ pub fn planting(
 ) -> Option<()> {
     let mut planting_query = world
         .ecs
-        .query::<(&PlantingCursor, &_, &mut particle::Emitter)>();
-    let (_, (_, &PhysHandle(cursor_h), emitter)) = planting_query.iter().next()?;
+        .query::<(&PlantingCursor, &PhysHandle, &mut particle::Emitter)>();
+    let (_, (_, cursor_h, emitter)) = planting_query.iter().next()?;
 
     let farmable_under_mouse = world
         .phys
@@ -119,7 +119,7 @@ pub fn planting(
         let (_, farm_tile_obj) = farmable_under_mouse?;
         farm_tile_obj.position().clone()
     };
-    let cursor_obj = world.phys.get_mut(cursor_h)?;
+    let cursor_obj = world.phys.get_mut(*cursor_h)?;
 
     cursor_obj.set_position(farm_tile_iso);
 

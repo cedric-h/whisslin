@@ -222,9 +222,7 @@ impl Manager {
         let phys = &world.phys;
         let l8r = &mut world.l8r;
 
-        for (emitter_ent, (&PhysHandle(h), emitter)) in
-            &mut ecs.query::<(&PhysHandle, &mut Emitter)>()
-        {
+        for (emitter_ent, (h, emitter)) in &mut ecs.query::<(&PhysHandle, &mut Emitter)>() {
             if emitter.status == EmitterStatus::Disabled {
                 continue;
             }
@@ -239,7 +237,7 @@ impl Manager {
             };
 
             let emitter_translation = {
-                phys.collision_object(h)
+                phys.collision_object(*h)
                     .unwrap_or_else(|| {
                         panic!(
                             "particle::Emitter[{:?}] has no Collision Object on handle[{:?}]!",

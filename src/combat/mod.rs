@@ -93,7 +93,7 @@ pub fn hurtful_damage(world: &mut crate::World) {
     let phys = &world.phys;
     let l8r = &mut world.l8r;
 
-    for (_, (collision::Contacts(contacts), &PhysHandle(h), hurtful, force)) in ecs
+    for (_, (collision::Contacts(contacts), &h, hurtful, force)) in ecs
         .query::<(
             &collision::Contacts,
             &PhysHandle,
@@ -121,7 +121,7 @@ pub fn hurtful_damage(world: &mut crate::World) {
                     let particles = ecs
                         .get::<DamageReceivedParticleEmitters>(touched_ent)
                         .ok()?;
-                    let PhysHandle(touched_h) = *ecs.get(touched_ent).ok()?;
+                    let touched_h = *ecs.get(touched_ent).ok()?;
 
                     let mut emitter_pos = *phys.collision_object(touched_h)?.position();
 

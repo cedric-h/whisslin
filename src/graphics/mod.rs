@@ -54,7 +54,7 @@ impl Alignment {
                 .get::<PhysHandle>(*ent)
                 .ok()
                 .map(|x| *x)
-                .and_then(|PhysHandle(h)| world.phys.collision_object(h))
+                .and_then(|h| world.phys.collision_object(h))
                 .map(|obj| obj.position().translation.vector)
                 .unwrap_or_else(|| {
                     panic!(

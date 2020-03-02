@@ -21,8 +21,7 @@ type Iso2 = na::Isometry2<f32>;
 type CollisionWorld = ncollide2d::world::CollisionWorld<f32, hecs::Entity>;
 pub use ncollide2d::pipeline::CollisionGroups;
 
-#[derive(Clone, Copy)]
-pub struct PhysHandle(pub ncollide2d::pipeline::CollisionObjectSlabHandle);
+type PhysHandle = ncollide2d::pipeline::CollisionObjectSlabHandle;
 
 const DIMENSIONS: Vector = Vector { x: 480.0, y: 270.0 };
 const TILE_SIZE: f32 = 16.0;
@@ -97,7 +96,7 @@ impl World {
             ncollide2d::pipeline::GeometricQueryType::Contacts(0.0, 0.0),
             entity,
         );
-        let hnd = PhysHandle(h);
+        let hnd = h;
         self.ecs
             .insert_one(entity, phys::collision::Contacts::new())
             .unwrap_or_else(|e| {
@@ -300,7 +299,7 @@ impl Game {
             .unwrap();
 
         let player_loc = (|| {
-            let PhysHandle(h) = *world.ecs.get::<PhysHandle>(player).ok()?;
+            let h = *world.ecs.get::<PhysHandle>(player).ok()?;
             Some(
                 world
                     .phys
@@ -421,12 +420,10 @@ pub fn death_particles(world: &mut World) {
     let phys = &world.phys;
     let l8r = &mut world.l8r;
 
-    for (_, (_, &PhysHandle(h), particles)) in
-        &mut ecs.query::<(&Dead, &_, &DeathParticleEmitters)>()
-    {
+    for (_, (_, h, particles)) in &mut ecs.query::<(&Dead, &PhysHandle, &DeathParticleEmitters)>() {
         (|| {
             let mut iso = Iso2::identity();
-            iso.translation = phys.collision_object(h)?.position().translation;
+            iso.translation = phys.collision_object(*h)?.position().translation;
 
             for emitter in particles.0.iter().cloned() {
                 l8r.l8r(move |world| {

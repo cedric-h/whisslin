@@ -356,112 +356,110 @@ pub fn aiming(world: &mut World, window: &mut Window) {
     // updates the weapon's position relative to the wielder,
     // if clicking, queues adding velocity to the weapon and unequips it.
     // if the weapon that's been equipped doesn't have an iso, queue adding one
-    let mut try_wield = |(
-        wielder_ent,
-        (&PhysHandle(wielder_h), inv, wielder, wielder_appearance),
-    ): (Entity, WieldQuery)| {
-        let wielder_iso = phys.collision_object(wielder_h)?.position();
+    let mut try_wield =
+        |(wielder_ent, (wielder_h, inv, wielder, wielder_appearance)): (Entity, WieldQuery)| {
+            let wielder_iso = phys.collision_object(*wielder_h)?.position();
 
-        let wep_ent = inv.equipped_ent()?;
-        let mut weapon = ecs.get_mut::<Weapon>(wep_ent).ok()?;
+            let wep_ent = inv.equipped_ent()?;
+            let mut weapon = ecs.get_mut::<Weapon>(wep_ent).ok()?;
 
-        // physics temporaries
-        let mouse = window.mouse();
-        let delta = Unit::new_normalize(
-            mouse.pos().into_vector() - (wielder_iso.translation.vector + weapon.offset),
-        );
+            // physics temporaries
+            let mouse = window.mouse();
+            let delta = Unit::new_normalize(
+                mouse.pos().into_vector() - (wielder_iso.translation.vector + weapon.offset),
+            );
 
-        let keyframes = &cfg.animations.get(&weapon.animations).unwrap_or_else(|| {
-            panic!(
-                "Can't find keyframes to animate; No animation config could be found for {}!",
-                weapon.animations
-            )
-        });
-        wielder.advance_state(mouse[MouseButton::Left].is_down(), &weapon);
-        let frame = weapon.animation_frame(delta, wielder.state, keyframes)?;
+            let keyframes = &cfg.animations.get(&weapon.animations).unwrap_or_else(|| {
+                panic!(
+                    "Can't find keyframes to animate; No animation config could be found for {}!",
+                    weapon.animations
+                )
+            });
+            wielder.advance_state(mouse[MouseButton::Left].is_down(), &weapon);
+            let frame = weapon.animation_frame(delta, wielder.state, keyframes)?;
 
-        // updating the weapon's appearance
-        {
-            let mut wep_appearance = ecs.get_mut::<graphics::Appearance>(wep_ent).ok()?;
-            wep_appearance.alignment = graphics::Alignment::Bottom(frame.bottom_padding);
-            wep_appearance.flip_x = wielder_appearance.flip_x;
-        }
+            // updating the weapon's appearance
+            {
+                let mut wep_appearance = ecs.get_mut::<graphics::Appearance>(wep_ent).ok()?;
+                wep_appearance.alignment = graphics::Alignment::Bottom(frame.bottom_padding);
+                wep_appearance.flip_x = wielder_appearance.flip_x;
+            }
 
-        // handle positioning
-        let mut frame_iso = frame.into_iso2();
-        if wielder_appearance.flip_x {
-            frame_iso.translation.vector.x *= -1.0;
-        }
-        frame_iso.translation.vector += wielder_iso.translation.vector;
+            // handle positioning
+            let mut frame_iso = frame.into_iso2();
+            if wielder_appearance.flip_x {
+                frame_iso.translation.vector.x *= -1.0;
+            }
+            frame_iso.translation.vector += wielder_iso.translation.vector;
 
-        // get and modify if possible or just insert the weapon's current position
-        let PhysHandle(wep_h) = *ecs
-            .get::<PhysHandle>(wep_ent)
-            .map_err(|_| {
-                l8r.l8r(move |world| {
-                    world.add_hitbox(
-                        wep_ent,
-                        frame_iso,
-                        ncollide2d::shape::Cuboid::new(Vec2::new(0.1, 1.0)),
-                        crate::CollisionGroups::new()
-                            .with_membership(&[crate::collide::WEAPON])
-                            .with_whitelist(&[]),
-                    );
+            // get and modify if possible or just insert the weapon's current position
+            let wep_h = *ecs
+                .get::<PhysHandle>(wep_ent)
+                .map_err(|_| {
+                    l8r.l8r(move |world| {
+                        world.add_hitbox(
+                            wep_ent,
+                            frame_iso,
+                            ncollide2d::shape::Cuboid::new(Vec2::new(0.1, 1.0)),
+                            crate::CollisionGroups::new()
+                                .with_membership(&[crate::collide::WEAPON])
+                                .with_whitelist(&[]),
+                        );
+                    })
                 })
-            })
-            .ok()?;
-        let wep_obj = phys.get_mut(wep_h)?;
-        wep_obj.set_position(frame_iso);
+                .ok()?;
+            let wep_obj = phys.get_mut(wep_h)?;
+            wep_obj.set_position(frame_iso);
 
-        // fire the spear if the wielder state indicates to do so!
-        if wielder.shooting() {
-            // cut off ties between weapon/player
-            l8r.insert_one(wielder_ent, crate::items::InventoryConsumeEquipped);
-            l8r.remove_one::<super::Chase>(wep_ent);
+            // fire the spear if the wielder state indicates to do so!
+            if wielder.shooting() {
+                // cut off ties between weapon/player
+                l8r.insert_one(wielder_ent, crate::items::InventoryConsumeEquipped);
+                l8r.remove_one::<super::Chase>(wep_ent);
 
-            // side effect! (knockback)
-            l8r.insert_one(
-                wielder_ent,
-                super::Force::new(
-                    delta.into_inner() * -weapon.player_knock_back_force,
-                    weapon.player_knock_back_decay,
-                ),
-            );
+                // side effect! (knockback)
+                l8r.insert_one(
+                    wielder_ent,
+                    super::Force::new(
+                        delta.into_inner() * -weapon.player_knock_back_force,
+                        weapon.player_knock_back_decay,
+                    ),
+                );
 
-            // the spear needs to go forward and run into things now.
-            //
-            // damage isn't configured here because the spear was Hurtful the entire time,
-            // it's only now even able to collide with things.
-            wep_obj.set_collision_groups(
-                crate::CollisionGroups::new()
-                    .with_membership(&[crate::collide::WEAPON])
-                    .with_whitelist(&[crate::collide::WORLD, crate::collide::ENEMY]),
-            );
-            l8r.insert_one(
-                wep_ent,
-                // the no clear is important for not knocking back things later
-                super::Force::new_no_clear(
-                    delta.into_inner() * weapon.force_magnitude,
-                    weapon.force_decay,
-                ),
-            );
+                // the spear needs to go forward and run into things now.
+                //
+                // damage isn't configured here because the spear was Hurtful the entire time,
+                // it's only now even able to collide with things.
+                wep_obj.set_collision_groups(
+                    crate::CollisionGroups::new()
+                        .with_membership(&[crate::collide::WEAPON])
+                        .with_whitelist(&[crate::collide::WORLD, crate::collide::ENEMY]),
+                );
+                l8r.insert_one(
+                    wep_ent,
+                    // the no clear is important for not knocking back things later
+                    super::Force::new_no_clear(
+                        delta.into_inner() * weapon.force_magnitude,
+                        weapon.force_decay,
+                    ),
+                );
 
-            l8r.insert_one(
-                wep_ent,
-                crate::graphics::fade::Fade {
-                    duration: 100,
-                    fade_start: 25,
-                },
-            );
+                l8r.insert_one(
+                    wep_ent,
+                    crate::graphics::fade::Fade {
+                        duration: 100,
+                        fade_start: 25,
+                    },
+                );
 
-            // this cursed bit here makes the z-order behave right.
-            let mut wep_appearance = ecs.get_mut::<graphics::Appearance>(wep_ent).ok()?;
-            wep_appearance.alignment = graphics::Alignment::Center;
-            wep_appearance.z_offset = -1.5;
-        }
+                // this cursed bit here makes the z-order behave right.
+                let mut wep_appearance = ecs.get_mut::<graphics::Appearance>(wep_ent).ok()?;
+                wep_appearance.alignment = graphics::Alignment::Center;
+                wep_appearance.z_offset = -1.5;
+            }
 
-        Some(())
-    };
+            Some(())
+        };
 
     ecs.query::<WieldQuery>().into_iter().for_each(|args| {
         try_wield(args);

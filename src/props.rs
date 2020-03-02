@@ -39,7 +39,7 @@ pub fn despawn_props(world: &mut crate::World) {
         .ecs
         .query::<(&Prop, &crate::PhysHandle)>()
         .iter()
-        .map(|(_, (_, &crate::PhysHandle(handle)))| handle)
+        .map(|(_, (_, handle))| *handle)
         .collect::<Vec<_>>();
 
     for ent in to_unload.into_iter() {

@@ -551,8 +551,8 @@ impl GuiState {
             .ecs
             .query::<(&Draggable, &graphics::Appearance, &PhysHandle)>()
             .iter()
-            .filter_map(|(gui_ent, (_, appearance, &PhysHandle(h)))| {
-                let iso = world.phys.collision_object(h)?.position();
+            .filter_map(|(gui_ent, (_, appearance, h))| {
+                let iso = world.phys.collision_object(*h)?.position();
                 let rect = match appearance.kind {
                     graphics::AppearanceKind::Color { rectangle, .. } => rectangle,
                     _ => unreachable!(),
@@ -594,7 +594,7 @@ impl GuiState {
             let mouse_pos = mouse.pos().into_vector();
 
             if let Some(last) = self.last_mouse_down_pos {
-                let PhysHandle(h) = *ecs.get_mut::<PhysHandle>(entity).unwrap();
+                let h = *ecs.get_mut::<PhysHandle>(entity).unwrap();
                 let obj = phys.get_mut(h).unwrap();
 
                 let mut iso = obj.position().clone();

@@ -123,7 +123,7 @@ impl LookChase {
 /// The result `.is_some()` if progress has been made wrt. the dragging,
 /// and is `Some(true)` if the goal has been reached.
 fn drag_goal(
-    PhysHandle(h): PhysHandle,
+    h: PhysHandle,
     phys: &mut CollisionWorld,
     goal: &Vec2,
     speed: f32,
@@ -157,7 +157,7 @@ pub fn velocity(world: &mut World) {
     let l8r = &mut world.l8r;
     let phys = &mut world.phys;
 
-    for (_, (PhysHandle(h), &Velocity(vel))) in &mut world.ecs.query::<(&PhysHandle, &Velocity)>() {
+    for (_, (h, &Velocity(vel))) in &mut world.ecs.query::<(&PhysHandle, &Velocity)>() {
         (|| {
             let obj = phys.get_mut(*h)?;
             let mut iso = obj.position().clone();
@@ -171,11 +171,12 @@ pub fn velocity(world: &mut World) {
         })();
     }
 
-    for (ent, (&PhysHandle(h), knock_back, contacts, force)) in
-        &mut world
-            .ecs
-            .query::<(&_, &KnockBack, &collision::Contacts, Option<&Force>)>()
-    {
+    for (ent, (h, knock_back, contacts, force)) in &mut world.ecs.query::<(
+        &PhysHandle,
+        &KnockBack,
+        &collision::Contacts,
+        Option<&Force>,
+    )>() {
         if let (Some(force), Some(minimum_speed)) = (force, knock_back.minimum_speed) {
             if force.vec.magnitude() < minimum_speed {
                 continue;
@@ -183,7 +184,7 @@ pub fn velocity(world: &mut World) {
         }
 
         let loc = phys
-            .collision_object(h)
+            .collision_object(*h)
             .unwrap_or_else(|| {
                 panic!(
                     "Entity[{:?}] has PhysHandle[{:?}] but no Collision Object!",
@@ -197,7 +198,7 @@ pub fn velocity(world: &mut World) {
         for &o_ent in contacts.iter() {
             (|| {
                 ecs.get::<collision::CollisionStatic>(o_ent).err()?;
-                let PhysHandle(o_h) = *ecs.get::<PhysHandle>(o_ent).ok()?;
+                let o_h = *ecs.get::<PhysHandle>(o_ent).ok()?;
                 /*.unwrap_or_else(|e| panic!(
                     "Entity[{:?}] stored in Contacts[{:?}] but no PhysHandle: {}",
                     o_ent, ent, e
@@ -230,10 +231,9 @@ pub fn velocity(world: &mut World) {
         }
     }
 
-    for (force_ent, (&PhysHandle(h), force)) in &mut world.ecs.query::<(&PhysHandle, &mut Force)>()
-    {
+    for (force_ent, (h, force)) in &mut world.ecs.query::<(&PhysHandle, &mut Force)>() {
         (|| {
-            let obj = phys.get_mut(h)?;
+            let obj = phys.get_mut(*h)?;
             let mut iso = obj.position().clone();
 
             iso.translation.vector += force.vec;
@@ -268,7 +268,7 @@ pub fn chase(world: &mut World) {
     let phys = &mut world.phys;
 
     let loc_of_ent = |goal_ent, phys: &mut crate::CollisionWorld| -> Option<Vec2> {
-        let PhysHandle(goal_h) = *ecs.get::<PhysHandle>(goal_ent).ok()?;
+        let goal_h = *ecs.get::<PhysHandle>(goal_ent).ok()?;
         Some(phys.collision_object(goal_h)?.position().translation.vector)
     };
 
@@ -284,9 +284,9 @@ pub fn chase(world: &mut World) {
         })();
     }
 
-    for (_, (&PhysHandle(h), &Charge { speed })) in ecs.query::<(&PhysHandle, &Charge)>().iter() {
+    for (_, (h, &Charge { speed })) in ecs.query::<(&PhysHandle, &Charge)>().iter() {
         (|| {
-            let obj = phys.get_mut(h)?;
+            let obj = phys.get_mut(*h)?;
             let mut iso = obj.position().clone();
 
             iso.translation.vector -= iso.rotation * -Vec2::y() * speed;
@@ -297,11 +297,11 @@ pub fn chase(world: &mut World) {
         })();
     }
 
-    for (_, (&PhysHandle(h), look_chase)) in ecs.query::<(&PhysHandle, &LookChase)>().iter() {
+    for (_, (h, look_chase)) in ecs.query::<(&PhysHandle, &LookChase)>().iter() {
         (|| {
             let look_at_loc = loc_of_ent(look_chase.look_at_ent, phys)?;
 
-            let obj = phys.get_mut(h)?;
+            let obj = phys.get_mut(*h)?;
             let mut iso = obj.position().clone();
 
             let delta = na::Unit::new_normalize(iso.translation.vector - look_at_loc);

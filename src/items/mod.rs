@@ -160,7 +160,7 @@ impl Inventory {
         // doing that ensures that it's not rendered or collided with
         // or any of that other icky stuff.
         l8r.l8r(move |world| {
-            if let Ok(crate::PhysHandle(h)) = world.ecs.remove_one(item_ent) {
+            if let Ok(h) = world.ecs.remove_one(item_ent) {
                 world.phys.remove(&[h])
             }
         });

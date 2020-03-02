@@ -31,14 +31,14 @@ pub fn movement(world: &mut World, window: &mut Window) {
         .normalize();
 
     if move_vec.len2() > 0.0 {
-        for (_, (&PhysHandle(h), &PlayerControlled { speed }, _appearance)) in ecs
+        for (_, (h, &PlayerControlled { speed }, _appearance)) in ecs
             .query::<(&PhysHandle, &PlayerControlled, &mut Appearance)>()
             .iter()
         {
             (|| {
                 let vel = move_vec.into_vector() * speed;
 
-                let obj = phys.get_mut(h)?;
+                let obj = phys.get_mut(*h)?;
                 let mut iso = obj.position().clone();
                 iso.translation.vector += vel;
                 obj.set_position_with_prediction(iso.clone(), {
