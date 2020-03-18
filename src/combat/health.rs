@@ -161,7 +161,7 @@ pub fn remove_out_of_health(world: &mut crate::World) {
 
     for (ent, &health) in ecs.query::<&Health>().iter() {
         if health.is_dead() {
-            l8r.insert_one(ent, crate::Dead);
+            l8r.insert_one(ent, crate::graphics::particle::death::Dead);
         }
     }
 }

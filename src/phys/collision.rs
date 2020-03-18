@@ -152,7 +152,7 @@ pub fn clear_dead_collision_objects(world: &mut World) {
     let phys = &mut world.phys;
 
     phys.remove(
-        &ecs.query::<(&PhysHandle, &crate::Dead)>()
+        &ecs.query::<(&PhysHandle, &crate::graphics::particle::death::Dead)>()
             .iter()
             .map(|(_, (h, _))| *h)
             .collect::<Vec<_>>(),

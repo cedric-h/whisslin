@@ -52,7 +52,9 @@ pub fn growing(world: &mut crate::World) -> Option<()> {
                     .ok()
                     .as_deref()
                     .map(|x| x.clone());
-                world.l8r.insert_one(growing_ent, crate::Dead);
+                world
+                    .l8r
+                    .insert_one(growing_ent, crate::graphics::particle::death::Dead);
 
                 let next_stage_ent = config
                     .items

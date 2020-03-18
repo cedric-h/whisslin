@@ -1,3 +1,5 @@
+pub mod death;
+
 use crate::{na, Iso2, PhysHandle, Vec2};
 use na::Unit;
 use rand::distributions::uniform::Uniform;
