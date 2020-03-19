@@ -3,8 +3,6 @@ pub mod collision;
 pub mod face_cursor;
 pub mod movement;
 
-pub use self::face_cursor::face_cursor;
-
 use crate::{na, PhysHandle, Vec2};
 use crate::{CollisionWorld, World};
 

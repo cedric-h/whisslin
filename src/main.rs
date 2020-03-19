@@ -1,5 +1,6 @@
 // #![feature(array_value_iter)]
 mod combat;
+mod component;
 mod config;
 mod core;
 mod farm;

@@ -1,6 +1,5 @@
-use crate::graphics::Appearance;
+use crate::phys::face_cursor::face_cursor;
 use crate::phys::{aiming, collision, movement};
-use crate::phys::{face_cursor, face_cursor::FacesCursor};
 use l8r::L8r;
 use ncollide2d::pipeline::CollisionGroups;
 use quicksilver::input::Key;
@@ -82,13 +81,7 @@ pub fn farming_update(game: &mut Game, window: &mut Window) -> Option<GameState>
     combat::hurtful_damage(world);
     combat::health::remove_out_of_health(world);
 
-    for (_, (appearance, phys_handle, _)) in world
-        .ecs
-        .query::<(&mut Appearance, &PhysHandle, &FacesCursor)>()
-        .iter()
-    {
-        face_cursor(&window.mouse(), &world.phys, appearance, phys_handle);
-    }
+    face_cursor(world, &window.mouse());
 
     let scheduled_world_edits: Vec<_> = world.l8r.drain(..).collect();
     L8r::now(scheduled_world_edits, world);
