@@ -3,8 +3,7 @@
 /// Symbolically represents how close something is to dying.
 ///
 /// If this value reaches 0, the Entity associated with it is deleted.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize)]
-#[serde(from = "usize")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Health {
     Points(usize),
     Dead,
@@ -157,11 +156,10 @@ fn health_misc() {
 /// Gives things with 0 health the Dead component.
 pub fn remove_out_of_health(world: &mut crate::World) {
     let ecs = &world.ecs;
-    let l8r = &mut world.l8r;
 
     for (ent, &health) in ecs.query::<&Health>().iter() {
         if health.is_dead() {
-            l8r.insert_one(ent, crate::Dead);
+            world.dead.push(ent);
         }
     }
 }

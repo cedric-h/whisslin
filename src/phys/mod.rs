@@ -1,21 +1,65 @@
-pub mod aiming;
 pub mod collision;
 pub mod movement;
 
-use crate::{na, PhysHandle, Vec2};
-use crate::{CollisionWorld, World};
+pub type CollisionWorld = ncollide2d::world::CollisionWorld<f32, hecs::Entity>;
+pub type PhysHandle = ncollide2d::pipeline::CollisionObjectSlabHandle;
+pub use ncollide2d::{pipeline::CollisionGroups, shape::Cuboid};
+
+use crate::World;
+
+/// Collision Group Constants
+pub mod collide {
+    pub const PLAYER: usize = 1;
+    pub const WEAPON: usize = 2;
+    pub const ENEMY: usize = 3;
+
+    /// Fences, Terrain, etc.
+    pub const WORLD: usize = 5;
+}
+
+pub fn phys_insert(
+    ecs: &mut hecs::World,
+    phys: &mut CollisionWorld,
+    entity: hecs::Entity,
+    iso: na::Isometry2<f32>,
+    cuboid: Cuboid<f32>,
+    groups: CollisionGroups,
+) -> PhysHandle {
+    let (h, _) = phys.add(
+        iso,
+        ncollide2d::shape::ShapeHandle::new(cuboid),
+        groups,
+        ncollide2d::pipeline::GeometricQueryType::Contacts(0.0, 0.0),
+        entity,
+    );
+    ecs.insert_one(entity, collision::Contacts::new())
+        .unwrap_or_else(|e| {
+            panic!(
+                "Couldn't insert Contacts for Entity[{:?}] when adding hitbox: {}",
+                entity, e
+            )
+        });
+    ecs.insert_one(entity, h).unwrap_or_else(|e| {
+        panic!(
+            "Couldn't insert PhysHandle[{:?}] for Entity[{:?}] to add hitbox: {}",
+            h, entity, e
+        )
+    });
+
+    h
+}
 
 /// DragTowards moves an Entity towards the supplied location (`goal_loc`) until the
 /// Entity's Iso2's translation's `vector` is within the supplied speed (`speed`) of the
 /// given location, at which point the DragTowards component is removed from the Entity
 /// at the end of the next frame.
 pub struct DragTowards {
-    pub goal_loc: Vec2,
+    pub goal_loc: na::Vector2<f32>,
     pub speed: f32,
     speed_squared: f32,
 }
 impl DragTowards {
-    pub fn new(goal_loc: Vec2, speed: f32) -> Self {
+    pub fn new(goal_loc: na::Vector2<f32>, speed: f32) -> Self {
         Self {
             goal_loc,
             speed,
@@ -26,7 +70,7 @@ impl DragTowards {
 
 /// Chase moves an Entity's Iso2's translation's `vector` field towards another Entity's,
 /// at the supplied rate (`speed`), removing the Chase component from the entity when
-/// their positions are within `speed` of each other.
+/// their positions are within `speed` of each other (if `remove_when_reached` is true).
 ///
 /// # Panics
 /// This will panic if either entity doesn't have `PhysHandle`s/`CollisionObject`s.
@@ -34,13 +78,16 @@ impl DragTowards {
 pub struct Chase {
     pub goal_ent: hecs::Entity,
     pub speed: f32,
+    pub remove_when_reached: bool,
     speed_squared: f32,
 }
 impl Chase {
-    pub fn new(goal_ent: hecs::Entity, speed: f32) -> Self {
+    /// Continues chasing even when the goal entity is reached.
+    pub fn determined(goal_ent: hecs::Entity, speed: f32) -> Self {
         Self {
             goal_ent,
             speed,
+            remove_when_reached: false,
             speed_squared: speed.powi(2),
         }
     }
@@ -58,7 +105,7 @@ impl Charge {
 }
 
 pub struct KnockBack {
-    pub groups: crate::CollisionGroups,
+    pub groups: CollisionGroups,
     pub force_decay: f32,
     pub force_magnitude: f32,
     /// Whether or not the direction of any Force affecting the object should be used
@@ -74,7 +121,7 @@ pub struct KnockBack {
 /// is only temporary, eventually fading away.
 #[derive(Clone)]
 pub struct Force {
-    pub vec: Vec2,
+    pub vec: na::Vector2<f32>,
     /// Domain [0, 1] unless you want the velocity to increase exponentially :thinking:
     pub decay: f32,
     /// Whether or not to remove the component from the entity when the Force isn't really
@@ -83,7 +130,7 @@ pub struct Force {
 }
 impl Force {
     /// A new Force that is cleared when the velocity decays down to extremely small decimals.
-    pub fn new(vec: Vec2, decay: f32) -> Self {
+    pub fn new(vec: na::Vector2<f32>, decay: f32) -> Self {
         Self {
             vec,
             decay,
@@ -91,7 +138,7 @@ impl Force {
         }
     }
     /// A new Force that is NOT cleared when the velocity decays down to extremely small decimals.
-    pub fn new_no_clear(vec: Vec2, decay: f32) -> Self {
+    pub fn new_no_clear(vec: na::Vector2<f32>, decay: f32) -> Self {
         Self {
             vec,
             decay,
@@ -120,9 +167,9 @@ impl LookChase {
 /// The result `.is_some()` if progress has been made wrt. the dragging,
 /// and is `Some(true)` if the goal has been reached.
 fn drag_goal(
-    PhysHandle(h): PhysHandle,
+    h: PhysHandle,
     phys: &mut CollisionWorld,
-    goal: &Vec2,
+    goal: &na::Vector2<f32>,
     speed: f32,
     speed_squared: f32,
 ) -> Option<bool> {
@@ -146,7 +193,7 @@ fn drag_goal(
     })
 }
 
-pub struct Velocity(Vec2);
+pub struct Velocity(na::Vector2<f32>);
 
 /// Also applies Forces and KnockBack.
 pub fn velocity(world: &mut World) {
@@ -154,7 +201,7 @@ pub fn velocity(world: &mut World) {
     let l8r = &mut world.l8r;
     let phys = &mut world.phys;
 
-    for (_, (PhysHandle(h), &Velocity(vel))) in &mut world.ecs.query::<(&PhysHandle, &Velocity)>() {
+    for (_, (h, &Velocity(vel))) in &mut world.ecs.query::<(&PhysHandle, &Velocity)>() {
         (|| {
             let obj = phys.get_mut(*h)?;
             let mut iso = obj.position().clone();
@@ -168,7 +215,7 @@ pub fn velocity(world: &mut World) {
         })();
     }
 
-    for (ent, (&PhysHandle(h), knock_back, contacts, force)) in
+    for (ent, (&h, knock_back, contacts, force)) in
         &mut world
             .ecs
             .query::<(&_, &KnockBack, &collision::Contacts, Option<&Force>)>()
@@ -194,7 +241,7 @@ pub fn velocity(world: &mut World) {
         for &o_ent in contacts.iter() {
             (|| {
                 ecs.get::<collision::CollisionStatic>(o_ent).err()?;
-                let PhysHandle(o_h) = *ecs.get::<PhysHandle>(o_ent).ok()?;
+                let o_h = *ecs.get::<PhysHandle>(o_ent).ok()?;
                 /*.unwrap_or_else(|e| panic!(
                     "Entity[{:?}] stored in Contacts[{:?}] but no PhysHandle: {}",
                     o_ent, ent, e
@@ -227,8 +274,7 @@ pub fn velocity(world: &mut World) {
         }
     }
 
-    for (force_ent, (&PhysHandle(h), force)) in &mut world.ecs.query::<(&PhysHandle, &mut Force)>()
-    {
+    for (force_ent, (&h, force)) in &mut world.ecs.query::<(&PhysHandle, &mut Force)>() {
         (|| {
             let obj = phys.get_mut(h)?;
             let mut iso = obj.position().clone();
@@ -261,32 +307,33 @@ pub fn velocity(world: &mut World) {
 /// Note: Also does the calculations for LookChase and Charge
 pub fn chase(world: &mut World) {
     let ecs = &world.ecs;
-    //let l8r = &mut world.l8r;
+    let l8r = &mut world.l8r;
     let phys = &mut world.phys;
 
-    let loc_of_ent = |goal_ent, phys: &mut crate::CollisionWorld| -> Option<Vec2> {
-        let PhysHandle(goal_h) = *ecs.get::<PhysHandle>(goal_ent).ok()?;
+    let loc_of_ent = |goal_ent, phys: &mut CollisionWorld| -> Option<na::Vector2<f32>> {
+        let goal_h = *ecs.get::<PhysHandle>(goal_ent).ok()?;
         Some(phys.collision_object(goal_h)?.position().translation.vector)
     };
 
-    for (_, (hnd, chase)) in ecs.query::<(&PhysHandle, &Chase)>().iter() {
+    for (chaser_ent, (hnd, chase)) in ecs.query::<(&PhysHandle, &Chase)>().iter() {
         (|| {
             let goal_loc = loc_of_ent(chase.goal_ent, phys)?;
 
-            if drag_goal(*hnd, phys, &goal_loc, chase.speed, chase.speed_squared)? {
-                //world.l8r.remove_one::<Chase>(chaser_ent);
+            let within_range = drag_goal(*hnd, phys, &goal_loc, chase.speed, chase.speed_squared)?;
+            if within_range && chase.remove_when_reached {
+                l8r.remove_one::<Chase>(chaser_ent);
             }
 
             Some(())
         })();
     }
 
-    for (_, (&PhysHandle(h), &Charge { speed })) in ecs.query::<(&PhysHandle, &Charge)>().iter() {
+    for (_, (&h, &Charge { speed })) in ecs.query::<(&PhysHandle, &Charge)>().iter() {
         (|| {
             let obj = phys.get_mut(h)?;
             let mut iso = obj.position().clone();
 
-            iso.translation.vector -= iso.rotation * -Vec2::y() * speed;
+            iso.translation.vector -= iso.rotation * -na::Vector2::y() * speed;
 
             obj.set_position(iso);
 
@@ -294,7 +341,7 @@ pub fn chase(world: &mut World) {
         })();
     }
 
-    for (_, (&PhysHandle(h), look_chase)) in ecs.query::<(&PhysHandle, &LookChase)>().iter() {
+    for (_, (&h, look_chase)) in ecs.query::<(&PhysHandle, &LookChase)>().iter() {
         (|| {
             let look_at_loc = loc_of_ent(look_chase.look_at_ent, phys)?;
 
@@ -302,7 +349,7 @@ pub fn chase(world: &mut World) {
             let mut iso = obj.position().clone();
 
             let delta = na::Unit::new_normalize(iso.translation.vector - look_at_loc);
-            let current = na::Unit::new_unchecked(iso.rotation * Vec2::x());
+            let current = na::Unit::new_unchecked(iso.rotation * na::Vector2::x());
 
             iso.rotation *=
                 na::UnitComplex::from_angle(look_chase.speed * delta.dot(&current).signum());

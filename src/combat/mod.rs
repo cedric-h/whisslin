@@ -1,7 +1,8 @@
-use crate::{na, PhysHandle, Vec2};
+use crate::phys::PhysHandle;
 
 pub mod health;
 pub use health::Health;
+pub mod aiming;
 
 /// Things with the Hurtful component remove Health from the Entities in their Contacts.
 ///
@@ -16,7 +17,7 @@ pub use health::Health;
 ///
 /// assert_eq!(default_hurtful, Hurtful::default())
 /// ```
-#[derive(serde::Deserialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct Hurtful {
     /// The damage before it is multipled by i.e. the speed as is the case if `HurtfulKind::Ram` is
     /// supplied.
@@ -52,11 +53,8 @@ impl Hurtful {
     }
 }
 
-/// A particle::Emitter component that is assigned to the Entity that receives damage when damage is dealt.
-pub struct DamageReceivedParticleEmitters(pub Vec<crate::graphics::particle::Emitter>);
-
 /// Control when your Entity is Hurtful
-#[derive(serde::Deserialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub enum HurtfulKind {
     /// Do damage only if moving quickly and collision occurs with something.
     Ram {
@@ -91,9 +89,8 @@ pub fn hurtful_damage(world: &mut crate::World) {
 
     let ecs = &world.ecs;
     let phys = &world.phys;
-    let l8r = &mut world.l8r;
 
-    for (_, (collision::Contacts(contacts), &PhysHandle(h), hurtful, force)) in ecs
+    for (_, (collision::Contacts(contacts), &h, hurtful, force)) in ecs
         .query::<(
             &collision::Contacts,
             &PhysHandle,
@@ -118,10 +115,7 @@ pub fn hurtful_damage(world: &mut crate::World) {
                 *hp -= hurtful.damage(speed);
 
                 (|| {
-                    let particles = ecs
-                        .get::<DamageReceivedParticleEmitters>(touched_ent)
-                        .ok()?;
-                    let PhysHandle(touched_h) = *ecs.get(touched_ent).ok()?;
+                    let touched_h = *ecs.get(touched_ent).ok()?;
 
                     let mut emitter_pos = *phys.collision_object(touched_h)?.position();
 
@@ -133,14 +127,8 @@ pub fn hurtful_damage(world: &mut crate::World) {
                                 .map(|f| f.vec)
                                 .unwrap_or_else(|| hurtful_loc - touched_loc),
                         ),
-                        &Vec2::x_axis(),
+                        &na::Vector2::x_axis(),
                     );
-
-                    for emitter in particles.0.iter().cloned() {
-                        l8r.l8r(move |world| {
-                            emitter.spawn_instance(world, emitter_pos);
-                        });
-                    }
 
                     Some(())
                 })();

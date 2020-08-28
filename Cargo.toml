@@ -6,36 +6,22 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[features]
-hitbox-outlines = []
-hot-config = ["notify", "crossbeam-channel"]
-
 [dependencies]
-# bundled input, windowing, rendering, etc.
-quicksilver = { git = "https://github.com/cedric-h/quicksilver.git", branch = "update-rustsim-crates" }
+# windowing, rendering, input, etc.
+macroquad = "0.2.9"
 
 # ecs
 hecs = { git = "https://github.com/Ralith/hecs.git" }
 l8r = { git = "https://github.com/cedric-h/l8r.git" }
 
 # maffs
-ncollide2d = "0.21.0"
-nalgebra = { version = "0.19.0", features = ["serde-serialize"] }
+ncollide2d = "0.24.0"
+na = { package = "nalgebra", version = "0.22.0"}
 
 # serialization
-toml = "0.5.5"
-serde = "1.0.104"
-serde_derive = "1.0.104"
 fxhash = "0.2.1"
+
+# util
 rand = "0.7.2"
-
-# keyframe live reload
-[dependencies.notify]
-version = "=5.0.0-pre.1"
-optional = true
-[dependencies.crossbeam-channel]
-version = "0.3.8"
-optional = true
-
-[patch.crates-io]
-nalgebra = { git = "https://github.com/rustsim/nalgebra.git", branch = "dev" }
+glam = {version = "0.8", features = ["scalar-math"] }
+miniquad = { version = "=0.3.0-alpha.11" }
