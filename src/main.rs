@@ -6,9 +6,9 @@ mod phys;
 mod world;
 pub use world::World;
 
-#[macroquad::main("SlingChuck")]
+#[macroquad::main("hackanoir")]
 async fn main() {
-    let mut w = World::new();
+    let mut w = World::new().await;
 
     loop {
         w.update();

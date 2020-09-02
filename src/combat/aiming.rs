@@ -5,25 +5,42 @@ use crate::{
 };
 use macroquad::*;
 
+#[derive(Debug, Copy, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
+pub struct Rot(pub f32);
+
+impl Rot {
+    fn as_unit(self) -> na::Unit<na::Vector2<f32>> {
+        na::Unit::new_normalize(
+            na::UnitComplex::from_angle(self.0).transform_vector(&na::Vector2::x()),
+        )
+    }
+
+    fn from_unit(unit: na::Unit<na::Vector2<f32>>) -> Self {
+        Rot(unit.angle(&na::Vector2::x()))
+    }
+}
+
+impl Into<na::Unit<na::Vector2<f32>>> for Rot {
+    fn into(self) -> na::Unit<na::Vector2<f32>> {
+        self.as_unit()
+    }
+}
+
 /// Instead of processing rotations as `UnitComplex`es,
 /// this function treats them as `na::Vector2`s, for ease of lerping
 /// among a host of other factors.
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct KeyFrame {
     pub time: f32,
     pub pos: na::Vector2<f32>,
-    pub rot: na::Unit<na::Vector2<f32>>,
+    pub rot: Rot,
     pub bottom_offset: f32,
 }
 impl KeyFrame {
     fn into_iso2(self) -> na::Isometry2<f32> {
-        na::Isometry2::from_parts(
-            na::Translation2::from(self.pos),
-            na::UnitComplex::rotation_between_axis(
-                &na::Unit::new_unchecked(-na::Vector2::y()),
-                &self.rot,
-            ),
-        )
+        na::Isometry2::new(self.pos, self.rot.0)
     }
 }
 
@@ -123,7 +140,18 @@ impl Wielder {
     }
 }
 
-#[derive(Clone)]
+pub fn weapon_hitbox_groups() -> phys::CollisionGroups {
+    phys::CollisionGroups::new()
+        .with_membership(&[phys::collide::WEAPON])
+        .with_whitelist(&[phys::collide::WORLD, phys::collide::ENEMY])
+}
+pub fn weapon_prelaunch_groups() -> phys::CollisionGroups {
+    phys::CollisionGroups::new()
+        .with_membership(&[phys::collide::WEAPON])
+        .with_blacklist(&[phys::collide::PLAYER, phys::collide::ENEMY])
+}
+
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct Weapon {
     // positioning
     pub offset: na::Vector2<f32>,
@@ -138,9 +166,11 @@ pub struct Weapon {
     /// Range [0, 1] unless you want your Weapon to get exponentially faster each frame.
     pub force_decay: f32,
     pub hitbox_size: na::Vector2<f32>,
-    pub hitbox_groups: phys::CollisionGroups,
-    pub prelaunch_groups: phys::CollisionGroups,
     pub boomerang: bool,
+    #[serde(skip, default = "weapon_hitbox_groups")]
+    pub hitbox_groups: phys::CollisionGroups,
+    #[serde(skip, default = "weapon_prelaunch_groups")]
+    pub prelaunch_groups: phys::CollisionGroups,
 
     // side effects
     pub player_knock_back_force: f32,
@@ -194,7 +224,7 @@ impl Weapon {
     /// However, if the weapon shouldn't be given a position at all
     /// (so that it remains unrendered) None is returned.
     fn animation_frame(
-        &mut self,
+        &self,
         mouse_delta: na::Unit<na::Vector2<f32>>,
         state: WielderState,
         keyframes: &[KeyFrame],
@@ -204,7 +234,7 @@ impl Weapon {
         let mut last = KeyFrame {
             time: 1.0,
             pos: self.offset,
-            rot: mouse_delta,
+            rot: Rot(mouse_delta.angle(&na::Vector2::x())),
             bottom_offset: self.bottom_offset,
         };
 
@@ -257,7 +287,7 @@ impl Weapon {
         KeyFrame {
             time: prog,
             pos: lf.pos.lerp(&rf.pos, prog),
-            rot: lf.rot.slerp(&rf.rot, prog),
+            rot: Rot::from_unit(lf.rot.as_unit().slerp(&rf.rot.into(), prog)),
             bottom_offset: lf.bottom_offset + (rf.bottom_offset - lf.bottom_offset) * prog,
         }
     }
@@ -266,74 +296,44 @@ impl Weapon {
 // updates the weapon's position relative to the wielder,
 // if clicking, queues adding velocity to the weapon and unequips it.
 // if the weapon that's been equipped doesn't have an iso, queue adding one
-pub fn aiming(world: &mut World) -> Option<()> {
-    let World {
+pub fn aiming(
+    World {
         ecs,
         l8r,
         phys,
-        camera,
+        config: world::Config {
+            player: world::player::Config {
+                keyframes,
+                weapon,
+                ..
+            },
+            draw: draw_config,
+        },
         player:
             world::Player {
                 entity: wielder_ent,
                 phys_handle: wielder_h,
-                weapon: player_weapon,
+                weapon_entity,
                 wielder,
+                ..
             },
         ..
-    } = world;
-
+    }: &mut World,
+) -> Option<()> {
     let wielder_iso = phys.collision_object(*wielder_h)?.position();
-
-    let wep_ent = player_weapon.clone()?;
-    let mut weapon = ecs.get_mut::<Weapon>(wep_ent).ok()?;
+    let wep_ent = weapon_entity.clone()?;
 
     // physics temporaries
     let mouse = {
         let (mouse_x, mouse_y) = mouse_position();
         let x = -(mouse_x - screen_width() / 2.0);
         let y = mouse_y - screen_height() / 2.0;
-        camera.iso = na::Isometry2::translation(weapon.offset.x, weapon.offset.y);
-        camera.world_to_screen(na::Vector2::new(x, y))
+        let cam = draw_config
+            .camera(na::Isometry2::translation(weapon.offset.x, weapon.offset.y));
+        cam.world_to_screen(na::Vector2::new(x, y))
     };
     let delta = -na::Unit::new_normalize(mouse);
 
-    let from_rot = |rot| {
-        na::Unit::new_normalize(
-            na::UnitComplex::from_angle(rot).transform_vector(&na::Vector2::x()),
-        )
-    };
-    let keyframes = vec![
-        KeyFrame {
-            time: 0.0,
-            pos: na::Vector2::new(-0.2, -0.4),
-            rot: from_rot(-25.0),
-            bottom_offset: -0.5,
-        },
-        KeyFrame {
-            time: 0.2,
-            pos: na::Vector2::new(0.5, -0.8),
-            rot: from_rot(-45.0),
-            bottom_offset: -0.4,
-        },
-        KeyFrame {
-            time: 0.4,
-            pos: na::Vector2::new(0.6, -0.9),
-            rot: from_rot(-200.0),
-            bottom_offset: -0.6,
-        },
-        KeyFrame {
-            time: 0.6,
-            pos: na::Vector2::new(0.0, -0.7),
-            rot: from_rot(-350.0),
-            bottom_offset: -0.3,
-        },
-        KeyFrame {
-            time: 0.7,
-            pos: na::Vector2::new(0.0, -0.7),
-            rot: from_rot(25.0),
-            bottom_offset: 0.2,
-        },
-    ];
     wielder.advance_state(is_mouse_button_down(MouseButton::Left), &weapon);
     let frame = weapon.animation_frame(delta, wielder.state, &keyframes)?;
 
@@ -349,7 +349,8 @@ pub fn aiming(world: &mut World) -> Option<()> {
     frame_iso.translation.vector += wielder_iso.translation.vector;
 
     // get and modify if possible or just insert the weapon's current position
-    let wep_h = *ecs.get::<PhysHandle>(wep_ent)
+    let wep_h = *ecs
+        .get::<PhysHandle>(wep_ent)
         .map_err(|_| {
             let groups = weapon.prelaunch_groups.clone();
             let size = weapon.hitbox_size.clone();
@@ -374,7 +375,7 @@ pub fn aiming(world: &mut World) -> Option<()> {
     if wielder.shooting() {
         // cut off ties between weapon/player
         if !weapon.boomerang {
-            *player_weapon = None;
+            *weapon_entity = None;
         }
 
         // side effect! (knockback)

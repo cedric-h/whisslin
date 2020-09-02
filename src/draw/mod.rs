@@ -1,146 +1,243 @@
-use crate::{phys::PhysHandle, World};
-use glam::{vec3, Mat4};
-use macroquad::*;
+use crate::{phys::PhysHandle, world, World};
+use macroquad::{drawing::Texture2D, *};
+use std::fmt;
 
-#[derive(Clone, Copy, Debug)]
-pub struct Rect {
-    pub size: na::Vector2<f32>,
-    pub color: macroquad::Color,
+mod cam;
+pub use cam::CedCam2D;
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Config {
+    pub zoom: f32,
+    pub tile_size: f32,
+    pub art: Vec<ArtConfig>,
 }
-impl Default for Rect {
-    fn default() -> Self {
-        Rect {
-            size: na::Vector2::new(1.0, 1.0),
-            color: BLACK,
+impl Config {
+    pub fn art(&self, file: &str) -> ArtHandle {
+        ArtHandle(
+            self.art
+                .iter()
+                .position(|a| a.file == file)
+                .unwrap_or_else(|| panic!("no art by name of {}", file)),
+        )
+    }
+
+    pub fn get(&self, art: ArtHandle) -> &ArtConfig {
+        self.art
+            .get(art.0)
+            .unwrap_or_else(|| panic!("invalid art handle: {}", art))
+    }
+
+    pub fn camera(&self, iso: na::Isometry2<f32>) -> CedCam2D {
+        CedCam2D {
+            zoom: self.zoom,
+            iso,
+            flip_x: false,
+        }
+    }
+
+    pub fn camera_x_flipped(&self, iso: na::Isometry2<f32>, flip_x: bool) -> CedCam2D {
+        CedCam2D {
+            flip_x,
+            ..self.camera(iso)
         }
     }
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
+pub struct ArtHandle(pub usize);
+
+impl fmt::Display for ArtHandle {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+pub struct Images {
+    images: Vec<Texture2D>,
+}
+impl Images {
+    pub async fn load(config: &world::Config) -> Self {
+        let mut images = Vec::with_capacity(config.draw.art.len());
+
+        //clear_background(WHITE);
+        //draw_text("LOADING", 0.0, 0.0, 20.0, BLACK);
+        next_frame().await;
+        for (i, name) in config.draw.art.iter().enumerate() {
+            /*
+            clear_background(WHITE);
+
+            draw_text(
+                &format!(
+                    "LOADING {}/{} ({:.3}%)",
+                    i,
+                    config.draw.art.len(),
+                    (i as f32 / config.draw.art.len() as f32) * 100.0
+                ),
+                0.0,
+                0.0,
+                20.0,
+                BLACK,
+            );
+            draw_text(&name.file, 20.0, 20.0, 20.0, DARKGRAY);*/
+            images.push(load_texture(&name.file).await);
+            //next_frame().await;
+        }
+
+        Self { images }
+    }
+
+    pub fn get(&mut self, ah: ArtHandle) -> &Texture2D {
+        unsafe { self.images.get_unchecked(ah.0) }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct AnimationFrame(pub usize);
+impl AnimationFrame {
+    pub fn current_frame(self, ss: Spritesheet) -> usize {
+        self.0 / ss.frame_rate as usize % ss.total
+    }
+}
+
+pub fn animate(World { ecs, .. }: &mut World) {
+    for (_, AnimationFrame(af)) in ecs.query::<&mut AnimationFrame>().iter() {
+        *af += 1;
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ArtConfig {
+    pub file: String,
+    pub scale: f32,
+    #[serde(default)]
+    pub spritesheet: Option<Spritesheet>,
+}
+
+#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Spritesheet {
+    pub rows: usize,
+    pub columns: usize,
+    pub total: usize,
+    pub frame_rate: usize,
+    pub hold_at: usize,
+}
+
+#[derive(Clone, Copy, Debug)]
 pub struct Looks {
-    pub rect: Rect,
+    pub art: ArtHandle,
     pub bottom_offset: f32,
+    pub scale: f32,
     pub flip_x: bool,
 }
 impl Looks {
-    pub fn size(size: na::Vector2<f32>) -> Self {
+    pub fn art(art: ArtHandle) -> Self {
         Looks {
-            rect: Rect {
-                size,
-                ..Default::default()
-            },
-            ..Default::default()
+            art,
+            scale: 1.0,
+            bottom_offset: 0.0,
+            flip_x: false,
         }
     }
+}
+
+#[derive(Default)]
+pub struct DrawState {
+    sprites: Vec<(Looks, na::Isometry2<f32>, Option<AnimationFrame>)>,
 }
 
 pub fn draw(
     World {
         phys,
         ecs,
-        camera,
+        config,
         player,
         map,
+        images,
+        draw_state,
         ..
-    }: &mut crate::World,
+    }: &mut World,
 ) {
-    clear_background(BLACK);
+    clear_background(Color([23, 138, 75, 255]));
 
     let player_iso = phys
         .collision_object(player.phys_handle)
         .unwrap()
         .position();
 
-    camera.iso = player_iso.inverse();
-    set_camera(*camera);
+    let camera = config.draw.camera(player_iso.inverse());
+    set_camera(camera);
     for tile in map.tiles.iter() {
-        draw_hexagon(
+        let image = images.get(tile.image);
+        draw_texture_ex(
+            *image,
             tile.translation.x,
             tile.translation.y,
-            crate::world::map::TILE_SIZE,
-            0.075,
-            true,
-            BLACK,
             WHITE,
+            DrawTextureParams {
+                dest_size: Some(vec2(1.02, 1.085) * 2.0 * config.draw.tile_size),
+                ..Default::default()
+            },
         )
     }
 
-    for (looks, iso) in ecs
-        .query::<(&Looks, &PhysHandle)>()
-        .iter()
-        .filter_map(|(_, (l, &h))| Some((l, phys.collision_object(h)?.position())))
-    {
-        camera.iso = player_iso.inverse() * *iso;
-        set_camera(*camera);
-        draw_rectangle(
-            looks.rect.size.x / if looks.flip_x { 2.0 } else { -2.0 },
-            looks.rect.size.y / -2.0 - looks.bottom_offset,
-            looks.rect.size.x,
-            looks.rect.size.y,
-            looks.rect.color,
+    draw_state.sprites.extend(
+        ecs.query::<(&Looks, &PhysHandle, Option<&AnimationFrame>)>()
+            .iter()
+            .filter_map(|(_, (&l, &h, af))| {
+                Some((l, *phys.collision_object(h)?.position(), af.copied()))
+            }),
+    );
+
+    draw_state
+        .sprites
+        .sort_unstable_by(|(_, iso_a, _), (_, iso_b, _)| {
+            iso_a
+                .translation
+                .vector
+                .y
+                .partial_cmp(&iso_b.translation.vector.y)
+                .unwrap()
+            //.unwrap_or(std::cmp::Ordering::Less)
+        });
+
+    for (looks, iso, anim_frame) in draw_state.sprites.drain(..) {
+        let camera = config
+            .draw
+            .camera_x_flipped(player_iso.inverse() * iso, looks.flip_x);
+        set_camera(camera);
+        let art = config.draw.get(looks.art);
+        let image = images.get(looks.art);
+        let size = {
+            let size = vec2(image.width(), image.height());
+            match anim_frame.and(art.spritesheet) {
+                Some(ss) => size / vec2(ss.columns as f32, ss.rows as f32),
+                _ => size,
+            }
+        };
+        let world_size = size * looks.scale * art.scale;
+        draw_texture_ex(
+            *image,
+            world_size.x() / -2.0,
+            world_size.y() / -2.0 - looks.bottom_offset,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(world_size),
+                source: art.spritesheet.and_then(|ss| {
+                    let af = anim_frame?.current_frame(ss);
+                    let row = af / ss.columns;
+                    let column = af % ss.columns;
+                    Some(Rect {
+                        x: column as f32 * size.x(),
+                        y: row as f32 * size.y(),
+                        w: size.x(),
+                        h: size.y(),
+                    })
+                }),
+                ..Default::default()
+            },
         )
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct CedCam2D {
-    pub zoom: f32,
-    pub iso: na::Isometry2<f32>,
-}
-
-impl Default for CedCam2D {
-    fn default() -> CedCam2D {
-        CedCam2D {
-            zoom: 10.0,
-            iso: na::Isometry2::identity(),
-        }
-    }
-}
-
-impl CedCam2D {
-    pub fn with_zoom(zoom: f32) -> Self {
-        CedCam2D {
-            zoom,
-            ..Default::default()
-        }
-    }
-
-    /// Returns the screen space position for a 2D camera world space position
-    pub fn world_to_screen(&self, point: na::Vector2<f32>) -> na::Vector2<f32> {
-        let mat = self.matrix();
-        let transform = mat.transform_point3(vec3(point.x, point.y, 0.0));
-
-        na::Vector2::new(transform.x(), transform.y())
-    }
-
-    // Returns the world space position for a 2D camera screen space position
-    pub fn screen_to_world(&self, point: na::Vector2<f32>) -> na::Vector2<f32> {
-        let inv_mat = self.matrix().inverse();
-        let transform = inv_mat.transform_point3(vec3(point.x, point.y, 0.0));
-
-        na::Vector2::new(transform.x(), transform.y())
-    }
-}
-
-impl Camera for CedCam2D {
-    fn matrix(&self) -> glam::Mat4 {
-        let Self { zoom, iso } = self;
-
-        let (w, h) = (screen_width(), screen_height());
-        Mat4::from_scale(vec3(1.0, -(w / h), 0.0) / *zoom)
-            * Mat4::from_translation(vec3(
-                iso.translation.vector.x,
-                iso.translation.vector.y,
-                0.0,
-            ))
-            * Mat4::from_axis_angle(vec3(0.0, 0.0, 1.0), iso.rotation.angle())
-    }
-
-    fn depth_enabled(&self) -> bool {
-        false
-    }
-
-    fn render_pass(&self) -> Option<miniquad::RenderPass> {
-        None
     }
 }

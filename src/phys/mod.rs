@@ -93,6 +93,28 @@ impl Chase {
     }
 }
 
+/// LurchChase applies a force to an entity, in the direction of another entity (`goal_ent`),
+/// whenever no forces are found on the entity.
+///
+/// # Panics
+/// This will panic if either entity doesn't have `PhysHandle`s/`CollisionObject`s.
+/// Having an Entity chase itself might work but I wouldn't recommend it.
+pub struct LurchChase {
+    pub goal_ent: hecs::Entity,
+    pub magnitude: f32,
+    pub decay: f32,
+}
+impl LurchChase {
+    /// Continues chasing even when the goal entity is reached.
+    pub fn new(goal_ent: hecs::Entity, magnitude: f32, decay: f32) -> Self {
+        Self {
+            goal_ent,
+            magnitude,
+            decay,
+        }
+    }
+}
+
 /// Entities with a Charge component will go forward in the direction they are facing,
 /// at the designated speed.
 pub struct Charge {
@@ -304,7 +326,7 @@ pub fn velocity(world: &mut World) {
     }
 }
 
-/// Note: Also does the calculations for LookChase and Charge
+/// Note: Also does the calculations for LurchChase, LookChase, and Charge
 pub fn chase(world: &mut World) {
     let ecs = &world.ecs;
     let l8r = &mut world.l8r;
@@ -323,6 +345,21 @@ pub fn chase(world: &mut World) {
             if within_range && chase.remove_when_reached {
                 l8r.remove_one::<Chase>(chaser_ent);
             }
+
+            Some(())
+        })();
+    }
+
+    for (chaser_ent, (_, lurch)) in ecs
+        .query::<hecs::Without<Force, (&PhysHandle, &LurchChase)>>()
+        .iter()
+    {
+        (|| {
+            let goal_loc = loc_of_ent(lurch.goal_ent, phys)?;
+            let chaser_loc = loc_of_ent(chaser_ent, phys)?;
+
+            let delta = (goal_loc - chaser_loc).normalize();
+            l8r.insert_one(chaser_ent, Force::new(delta * lurch.magnitude, lurch.decay));
 
             Some(())
         })();

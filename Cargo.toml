@@ -6,9 +6,19 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[profile.dev.package.'*']
+opt-level = 3
+
 [dependencies]
 # windowing, rendering, input, etc.
-macroquad = "0.2.9"
+#macroquad = "0.2.9"
+#macroquad = { path = "../macroquad", default-features = false, features = [ "log-impl" ]}
+macroquad = { path = "../macroquad" }
+glam = {version = "0.8", features = ["scalar-math"] }
+miniquad = { version = "=0.3.0-alpha.11" }
+
+# serde
+serde = { version = "1.0.115", features = [ "derive" ] }
 
 # ecs
 hecs = { git = "https://github.com/Ralith/hecs.git" }
@@ -16,12 +26,6 @@ l8r = { git = "https://github.com/cedric-h/l8r.git" }
 
 # maffs
 ncollide2d = "0.24.0"
-na = { package = "nalgebra", version = "0.22.0"}
-
-# serialization
+na = { package = "nalgebra", version = "0.22.0", default-features = false, features = ["serde-serialize"] }
 fxhash = "0.2.1"
-
-# util
-rand = "0.7.2"
-glam = {version = "0.8", features = ["scalar-math"] }
-miniquad = { version = "=0.3.0-alpha.11" }
+serde_json = "1.0.57"

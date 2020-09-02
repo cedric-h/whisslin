@@ -1,0 +1,108 @@
+{
+    "player": {
+        "weapon": {
+            "bottom_offset": 0.325,
+            "offset": [0.115, -0.385],
+            "readying_time": 60,
+            "equip_time": 60,
+            "hitbox_size": [0.24, 2.2],
+            "force_magnitude": 2.125,
+            "force_decay": 0.75,
+            "boomerang": true,
+            "player_knock_back_force": 0.5,
+            "player_knock_back_decay": 0.75
+        },
+        "keyframes": [
+            {
+                "time": 0.0,
+                "pos": [-0.2, -0.4],
+                "rot": 25.0,
+                "bottom_offset": -0.5
+            },
+            {
+                "time": 0.2,
+                "pos": [0.5, -0.8],
+                "rot": -45.0,
+                "bottom_offset": -0.4
+            },
+            {
+                "time": 0.4,
+                "pos": [0.6, -0.9],
+                "rot": -200.0,
+                "bottom_offset": -0.6
+            },
+            {
+                "time": 0.6,
+                "pos": [0.0, -0.7],
+                "rot": -350.0,
+                "bottom_offset": -0.3
+            },
+            {
+                "time": 0.7,
+                "pos": [0.0, -0.7],
+                "rot": 25.0,
+                "bottom_offset": 0.2
+            }
+        ],
+        "direction_art": {
+            "side": 0,
+            "down": 1
+        },
+        "speed": 0.134
+    },
+    "draw": {
+        "zoom": 8.0,
+        "tile_size": 1.5,
+        "art": [
+            {
+                "file": "golem frames/down_spritesheet.png",
+                "scale": 0.0078125,
+                "spritesheet": {
+                    "rows": 3,
+                    "columns": 4,
+                    "total": 12,
+                    "frame_rate": 2,
+                    "hold_at": 3
+                }
+            },
+            {
+                "file": "golem frames/side_spritesheet.png",
+                "scale": 0.0078125,
+                "spritesheet": {
+                    "rows": 3,
+                    "columns": 4,
+                    "total": 12,
+                    "frame_rate": 2,
+                    "hold_at": 3
+                }
+            },
+            {
+                "file": "baseball.png",
+                "scale": 0.005
+            },
+            {
+                "file": "grass_1.png",
+                "scale": 0.005
+            },
+            {
+                "file": "grass_2.png",
+                "scale": 0.005
+            },
+            {
+                "file": "grass_3.png",
+                "scale": 0.005
+            },
+            {
+                "file": "slime frames/spritesheet.png",
+                "scale": 0.0078125,
+                "spritesheet": {
+                    "rows": 4,
+                    "columns": 5,
+                    "total": 19,
+                    "frame_rate": 3,
+                    "hold_at": 0
+                }
+            }
+        ]
+    }
+}
