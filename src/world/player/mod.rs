@@ -1,41 +1,64 @@
+mod aiming;
+pub use aiming::aiming;
+mod movement;
+pub use movement::movement;
+
 use crate::{
-    combat::{self, aiming},
-    draw,
-    phys::{self, collide, movement, CollisionGroups, Cuboid, PhysHandle},
+    combat, draw,
+    phys::{self, collide, CollisionGroups, Cuboid, PhysHandle},
 };
 
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
+struct EachDirection<T> {
+    // boy you turn me inside out
+    // and 'round 'round
+    up: T,
+    side: T,
+    down: T,
+}
+impl<T> EachDirection<T> {
+    fn get(&self, d: Direction) -> &T {
+        match d {
+            Direction::Side => &self.side,
+            Direction::Down => &self.down,
+            Direction::Up => &self.up,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+enum Direction {
+    Side,
+    Up,
+    Down,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DirectionConfig {
+    art: draw::ArtHandle,
+    weapon_in_front: bool,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Config {
-    pub keyframes: Vec<aiming::KeyFrame>,
-    pub direction_art: movement::WalkDirectionArtConfig,
-    pub weapon: aiming::Weapon,
-    pub speed: f32,
+    directions: EachDirection<DirectionConfig>,
+    weapon: aiming::Weapon,
+    speed: f32,
+    stop_decay: f32,
 }
 impl Config {
-    /*
-    pub fn dev_ui(&mut self) {
-        use macroquad::*;
-
-        set_default_camera();
-        draw_window(
-            hash!(),
-            vec2(400.0, 200.0),
-            vec2(320.0, 400.0),
-            WindowParams {
-                label: "Shop".to_string(),
-                close_button: false,
-                ..Default::default()
-            },
-            |ui| {
-                let mut speed_str = self.speed.to_string();
-                ui.input_field(hash!(), "player speed", &mut speed_str);
-                if let Ok(speed) = speed_str.parse::<f32>() {
-                    self.speed = speed;
-                }
-            }
-        );
-    }*/
+    pub fn dev_ui(&mut self, ui: &mut egui::Ui) {
+        ui.collapsing("Speed", |ui| {
+            ui.label("speed");
+            ui.add(egui::DragValue::f32(&mut self.speed).speed(0.005));
+            ui.label("stop walk slowdown decay");
+            ui.add(egui::DragValue::f32(&mut self.stop_decay).speed(0.005));
+        });
+        ui.collapsing("Weapon", |ui| self.weapon.dev_ui(ui));
+    }
 }
 
 pub struct Player {
@@ -74,7 +97,7 @@ impl Player {
         ));
 
         let ent = ecs.spawn((
-            draw::Looks::art(config.player.direction_art.down),
+            draw::Looks::art(config.player.directions.down.art),
             draw::AnimationFrame(3),
         ));
         Player {

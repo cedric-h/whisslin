@@ -2,7 +2,6 @@ use crate::phys::PhysHandle;
 
 pub mod health;
 pub use health::Health;
-pub mod aiming;
 
 /// Things with the Hurtful component remove Health from the Entities in their Contacts.
 ///

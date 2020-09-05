@@ -1,5 +1,4 @@
 pub mod collision;
-pub mod movement;
 
 pub type CollisionWorld = ncollide2d::world::CollisionWorld<f32, hecs::Entity>;
 pub type PhysHandle = ncollide2d::pipeline::CollisionObjectSlabHandle;

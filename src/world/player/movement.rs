@@ -1,22 +1,22 @@
-use crate::{draw, World};
+use super::Direction;
+use crate::{
+    draw::{AnimationFrame, Looks},
+    World,
+};
 use macroquad::{is_key_down, KeyCode};
 
 #[derive(Debug, Clone, Copy)]
 pub struct WalkAnimator {
-    last_direction: na::Vector2<f32>,
+    direction: Direction,
+    last_move: na::Vector2<f32>,
 }
 impl Default for WalkAnimator {
     fn default() -> Self {
         Self {
-            last_direction: na::zero(),
+            direction: Direction::Down,
+            last_move: na::zero(),
         }
     }
-}
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, Copy)]
-#[serde(deny_unknown_fields)]
-pub struct WalkDirectionArtConfig {
-    pub side: draw::ArtHandle,
-    pub down: draw::ArtHandle,
 }
 
 pub fn movement(
@@ -29,7 +29,7 @@ pub fn movement(
     }: &mut World,
 ) -> Option<()> {
     let mut query = ecs
-        .query_one::<(&mut draw::AnimationFrame, &mut draw::Looks)>(player.entity)
+        .query_one::<(&mut AnimationFrame, &mut Looks)>(player.entity)
         .ok()?;
     let (af, looks) = query.get()?;
 
@@ -49,13 +49,25 @@ pub fn movement(
 
     let vel = if move_vec.magnitude_squared() > 0.0 {
         let vel = move_vec * config.player.speed;
-        player.walk_animator.last_direction = vel;
+        player.walk_animator.last_move = vel;
 
-        looks.art = if vel.x.abs() < std::f32::EPSILON {
-            config.player.direction_art.down
-        } else {
-            config.player.direction_art.side
+        let new_direction = match (vel.x.abs() > std::f32::EPSILON, vel.y < 0.0) {
+            (true, _) => Direction::Side,
+            (_, true) => Direction::Up,
+            _ => Direction::Down,
         };
+
+        if new_direction != player.walk_animator.direction {
+            player.walk_animator.direction = new_direction;
+            let direction_config = config.player.directions.get(new_direction);
+            looks.art = direction_config.art;
+            if let Some(mut wep_looks) = player
+                .weapon_entity
+                .and_then(|e| ecs.get_mut::<Looks>(e).ok())
+            {
+                wep_looks.z_offset = (direction_config.weapon_in_front as u8 * 10) as f32;
+            }
+        }
         looks.flip_x = vel.x < 0.0;
 
         Some(vel)
@@ -65,8 +77,8 @@ pub fn movement(
             af.0 -= 1;
             None
         } else {
-            player.walk_animator.last_direction *= 0.92;
-            Some(player.walk_animator.last_direction)
+            player.walk_animator.last_move *= config.player.stop_decay;
+            Some(player.walk_animator.last_move)
         }
     }?;
 

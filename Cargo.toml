@@ -11,21 +11,25 @@ opt-level = 3
 
 [dependencies]
 # windowing, rendering, input, etc.
-#macroquad = "0.2.9"
-#macroquad = { path = "../macroquad", default-features = false, features = [ "log-impl" ]}
-macroquad = { path = "../macroquad" }
-glam = {version = "0.8", features = ["scalar-math"] }
 miniquad = { version = "=0.3.0-alpha.11" }
+macroquad = { git = "https://github.com/cedric-h/macroquad", branch = "char_events" }
+
+# ui
+emigui-miniquad = { git = "https://github.com/cedric-h/emigui-miniquad.git", branch = "ui_plugin", features = ["macroquad"] }
 
 # serde
 serde = { version = "1.0.115", features = [ "derive" ] }
+serde_json = "1.0.57"
 
 # ecs
 hecs = { git = "https://github.com/Ralith/hecs.git" }
 l8r = { git = "https://github.com/cedric-h/l8r.git" }
 
 # maffs
+glam = {version = "0.8", features = ["scalar-math"] }
 ncollide2d = "0.24.0"
 na = { package = "nalgebra", version = "0.22.0", default-features = false, features = ["serde-serialize"] }
+
+# fast hash maps
 fxhash = "0.2.1"
-serde_json = "1.0.57"
+egui = "0.1.3"

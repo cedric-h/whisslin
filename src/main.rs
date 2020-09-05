@@ -12,7 +12,7 @@ async fn main() {
 
     loop {
         w.update();
-        draw::draw(&mut w);
+        w.draw();
         next_frame().await;
     }
 }

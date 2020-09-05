@@ -45,7 +45,7 @@ impl Config {
 }
 
 #[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
-pub struct ArtHandle(pub usize);
+pub struct ArtHandle(usize);
 
 impl fmt::Display for ArtHandle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -60,11 +60,10 @@ impl Images {
     pub async fn load(config: &world::Config) -> Self {
         let mut images = Vec::with_capacity(config.draw.art.len());
 
-        //clear_background(WHITE);
-        //draw_text("LOADING", 0.0, 0.0, 20.0, BLACK);
+        clear_background(WHITE);
+        draw_text("LOADING", 0.0, 0.0, 20.0, BLACK);
         next_frame().await;
         for (i, name) in config.draw.art.iter().enumerate() {
-            /*
             clear_background(WHITE);
 
             draw_text(
@@ -79,9 +78,9 @@ impl Images {
                 20.0,
                 BLACK,
             );
-            draw_text(&name.file, 20.0, 20.0, 20.0, DARKGRAY);*/
+            draw_text(&name.file, 20.0, 20.0, 20.0, DARKGRAY);
             images.push(load_texture(&name.file).await);
-            //next_frame().await;
+            next_frame().await;
         }
 
         Self { images }
@@ -128,6 +127,7 @@ pub struct Spritesheet {
 #[derive(Clone, Copy, Debug)]
 pub struct Looks {
     pub art: ArtHandle,
+    pub z_offset: f32,
     pub bottom_offset: f32,
     pub scale: f32,
     pub flip_x: bool,
@@ -137,6 +137,7 @@ impl Looks {
         Looks {
             art,
             scale: 1.0,
+            z_offset: 0.0,
             bottom_offset: 0.0,
             flip_x: false,
         }
@@ -191,17 +192,14 @@ pub fn draw(
             }),
     );
 
-    draw_state
-        .sprites
-        .sort_unstable_by(|(_, iso_a, _), (_, iso_b, _)| {
-            iso_a
-                .translation
-                .vector
-                .y
-                .partial_cmp(&iso_b.translation.vector.y)
-                .unwrap()
-            //.unwrap_or(std::cmp::Ordering::Less)
-        });
+    draw_state.sprites.sort_unstable_by(|a, b| {
+        fn f((looks, iso_a, _): &(Looks, na::Isometry2<f32>, Option<AnimationFrame>)) -> f32 {
+            iso_a.translation.vector.y + looks.z_offset
+        }
+
+        f(a).partial_cmp(&f(b))
+            .unwrap_or(std::cmp::Ordering::Greater)
+    });
 
     for (looks, iso, anim_frame) in draw_state.sprites.drain(..) {
         let camera = config

@@ -42,6 +42,22 @@ impl KeyFrame {
     fn into_iso2(self) -> na::Isometry2<f32> {
         na::Isometry2::new(self.pos, self.rot.0)
     }
+
+    pub fn dev_ui(&mut self, ui: &mut egui::Ui) {
+        ui.label("time");
+        ui.add(egui::DragValue::f32(&mut self.time).speed(0.01));
+
+        ui.label("bottom offset");
+        ui.add(egui::DragValue::f32(&mut self.bottom_offset).speed(0.01));
+
+        ui.add(egui::Slider::f32(&mut self.rot.0, -180.0..=180.0).text("rotation"));
+
+        ui.label("position");
+        ui.horizontal(|ui| {
+            ui.add(egui::DragValue::f32(&mut self.pos.x).speed(0.01));
+            ui.add(egui::DragValue::f32(&mut self.pos.y).speed(0.01));
+        });
+    }
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -151,63 +167,32 @@ pub fn weapon_prelaunch_groups() -> phys::CollisionGroups {
         .with_blacklist(&[phys::collide::PLAYER, phys::collide::ENEMY])
 }
 
-#[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Weapon {
     // positioning
-    pub offset: na::Vector2<f32>,
-    pub bottom_offset: f32,
+    offset: na::Vector2<f32>,
+    bottom_offset: f32,
 
     // animations
-    pub equip_time: u16,
-    pub readying_time: u16,
+    equip_time: u16,
+    readying_time: u16,
 
     // projectile
-    pub force_magnitude: f32,
+    force_magnitude: f32,
     /// Range [0, 1] unless you want your Weapon to get exponentially faster each frame.
-    pub force_decay: f32,
-    pub hitbox_size: na::Vector2<f32>,
-    pub boomerang: bool,
+    force_decay: f32,
+    hitbox_size: na::Vector2<f32>,
+    boomerang: bool,
     #[serde(skip, default = "weapon_hitbox_groups")]
-    pub hitbox_groups: phys::CollisionGroups,
+    hitbox_groups: phys::CollisionGroups,
     #[serde(skip, default = "weapon_prelaunch_groups")]
-    pub prelaunch_groups: phys::CollisionGroups,
+    prelaunch_groups: phys::CollisionGroups,
 
     // side effects
-    pub player_knock_back_force: f32,
-    pub player_knock_back_decay: f32,
-}
-impl Default for Weapon {
-    fn default() -> Self {
-        Self {
-            // positioning
-            offset: na::zero(),
-            bottom_offset: 0.0,
+    player_knock_back_force: f32,
+    player_knock_back_decay: f32,
 
-            // timing
-            equip_time: 60,
-            readying_time: 60,
-
-            // projectile
-            hitbox_size: na::Vector2::new(1.0, 1.0),
-            hitbox_groups: {
-                phys::CollisionGroups::new()
-                    .with_membership(&[phys::collide::WEAPON])
-                    .with_whitelist(&[phys::collide::WORLD, phys::collide::ENEMY])
-            },
-            prelaunch_groups: {
-                phys::CollisionGroups::new()
-                    .with_membership(&[phys::collide::WEAPON])
-                    .with_blacklist(&[phys::collide::PLAYER, phys::collide::ENEMY])
-            },
-            force_magnitude: 1.0,
-            force_decay: 1.0,
-            boomerang: false,
-
-            // side effects
-            player_knock_back_force: 0.5,
-            player_knock_back_decay: 0.75,
-        }
-    }
+    keyframes: Vec<KeyFrame>,
 }
 impl Weapon {
     /// # Input
@@ -227,7 +212,6 @@ impl Weapon {
         &self,
         mouse_delta: na::Unit<na::Vector2<f32>>,
         state: WielderState,
-        keyframes: &[KeyFrame],
     ) -> Option<KeyFrame> {
         // the implied last frame of the reloading animtion,
         // pointing towards the mouse.
@@ -239,31 +223,25 @@ impl Weapon {
         };
 
         // read timers
-        match state {
-            WielderState::Summoning { .. } => None,
-            WielderState::Reloading { timer } => Some(Self::reloading_animation_frame(
-                (timer as f32) / (self.equip_time as f32),
-                keyframes,
-                &last,
-            )),
-            WielderState::Loaded => Some(last),
+        Some(match state {
+            WielderState::Summoning { .. } => return None,
+            WielderState::Reloading { timer } => {
+                self.reloading_animation_frame((timer as f32) / (self.equip_time as f32), &last)
+            }
+            WielderState::Loaded => last,
             WielderState::Readying { timer } => {
                 last.bottom_offset *= 1.0 - (timer as f32) / (self.readying_time as f32);
-                Some(last)
+                last
             }
             WielderState::Readied | WielderState::Shooting => {
                 last.bottom_offset = 0.0;
-                Some(last)
+                last
             }
-        }
+        })
     }
 
-    fn reloading_animation_frame(
-        mut prog: f32,
-        keyframes: &[KeyFrame],
-        last: &KeyFrame,
-    ) -> KeyFrame {
-        let mut frames = keyframes.iter();
+    fn reloading_animation_frame(&self, mut prog: f32, last: &KeyFrame) -> KeyFrame {
+        let mut frames = self.keyframes.iter();
 
         // find the key frames before and after our current time
         let mut lf = frames.next().unwrap();
@@ -291,6 +269,62 @@ impl Weapon {
             bottom_offset: lf.bottom_offset + (rf.bottom_offset - lf.bottom_offset) * prog,
         }
     }
+
+    pub fn dev_ui(&mut self, ui: &mut egui::Ui) {
+        ui.collapsing("Default Position", |ui| {
+            ui.label("bottom offset");
+            ui.add(egui::DragValue::f32(&mut self.bottom_offset).speed(0.01));
+
+            ui.label("position");
+            ui.horizontal(|ui| {
+                ui.add(egui::DragValue::f32(&mut self.offset.x).speed(0.01));
+                ui.add(egui::DragValue::f32(&mut self.offset.y).speed(0.01));
+            });
+        });
+
+        ui.collapsing("Timing", |ui| {
+            ui.label("readying time");
+            let mut rt = self.readying_time as f32;
+            ui.add(egui::DragValue::f32(&mut rt));
+            self.readying_time = rt.round() as u16;
+
+            ui.label("equip time");
+            let mut et = self.equip_time as f32;
+            ui.add(egui::DragValue::f32(&mut et));
+            self.equip_time = et.round() as u16;
+        });
+
+        ui.collapsing("Projectile", |ui| {
+            ui.label("hitbox size");
+            ui.horizontal(|ui| {
+                ui.add(egui::DragValue::f32(&mut self.hitbox_size.x).speed(0.01));
+                ui.add(egui::DragValue::f32(&mut self.hitbox_size.y).speed(0.01));
+            });
+
+            ui.label("force magnitude");
+            ui.add(egui::DragValue::f32(&mut self.force_magnitude).speed(0.01));
+
+            ui.label("force decay");
+            ui.add(egui::DragValue::f32(&mut self.force_decay).speed(0.01));
+
+            ui.checkbox("boomerang", &mut self.boomerang)
+                .tooltip_text("do you automatically get this weapon back after having thrown it?");
+        });
+
+        ui.collapsing("Side Effects", |ui| {
+            ui.label("player knock back force");
+            ui.add(egui::DragValue::f32(&mut self.player_knock_back_force).speed(0.01));
+
+            ui.label("player knock back decay");
+            ui.add(egui::DragValue::f32(&mut self.player_knock_back_decay).speed(0.01));
+        });
+
+        ui.collapsing("Keyframes", |ui| {
+            for (i, kf) in self.keyframes.iter_mut().enumerate() {
+                ui.collapsing(format!("keyframe {}", i), |ui| kf.dev_ui(ui));
+            }
+        });
+    }
 }
 
 // updates the weapon's position relative to the wielder,
@@ -301,14 +335,11 @@ pub fn aiming(
         ecs,
         l8r,
         phys,
-        config: world::Config {
-            player: world::player::Config {
-                keyframes,
-                weapon,
-                ..
+        config:
+            world::Config {
+                player: world::player::Config { weapon, .. },
+                draw: draw_config,
             },
-            draw: draw_config,
-        },
         player:
             world::Player {
                 entity: wielder_ent,
@@ -328,14 +359,13 @@ pub fn aiming(
         let (mouse_x, mouse_y) = mouse_position();
         let x = -(mouse_x - screen_width() / 2.0);
         let y = mouse_y - screen_height() / 2.0;
-        let cam = draw_config
-            .camera(na::Isometry2::translation(weapon.offset.x, weapon.offset.y));
+        let cam = draw_config.camera(na::Isometry2::translation(weapon.offset.x, weapon.offset.y));
         cam.world_to_screen(na::Vector2::new(x, y))
     };
     let delta = -na::Unit::new_normalize(mouse);
 
     wielder.advance_state(is_mouse_button_down(MouseButton::Left), &weapon);
-    let frame = weapon.animation_frame(delta, wielder.state, &keyframes)?;
+    let frame = weapon.animation_frame(delta, wielder.state)?;
 
     // updating the weapon's looks
     {
