@@ -12,12 +12,12 @@ pub struct Rot(pub f32);
 impl Rot {
     fn as_unit(self) -> na::Unit<na::Vector2<f32>> {
         na::Unit::new_normalize(
-            na::UnitComplex::from_angle(self.0).transform_vector(&na::Vector2::x()),
+            na::UnitComplex::from_angle(self.0).transform_vector(&na::Vector2::y()),
         )
     }
 
     fn from_unit(unit: na::Unit<na::Vector2<f32>>) -> Self {
-        Rot(unit.angle(&na::Vector2::x()))
+        Rot(unit.angle(&na::Vector2::y()))
     }
 }
 
@@ -232,7 +232,7 @@ impl WeaponConfig {
         let mut last = Keyframe {
             time: 1.0,
             pos: self.offset,
-            rot: Rot(mouse_delta.angle(&na::Vector2::x())),
+            rot: Rot(mouse_delta.angle(&na::Vector2::y())),
             bottom_offset: self.bottom_offset,
             #[cfg(feature = "confui")]
             removal_checkbox_checked: false,
@@ -430,6 +430,13 @@ pub fn aiming(
         looks.flip_x
     };
 
+    // if they quit preparing to throw in the middle, we need to unphysicalize the weapon
+    if matches!(wielder.state, WielderState::Readying { .. }) && !mouse_down {
+        if let Ok(&wep_h) = ecs.get::<PhysHandle>(wep_ent).as_deref() {
+            l8r.l8r(move |w| w.remove_physical(wep_ent, wep_h))
+        }
+    }
+
     wielder.advance_state(mouse_down, &weapon, readying_animation_length);
     let frame = weapon.animation_frame(delta, wielder.state, readying_animation_length)?;
 
@@ -448,7 +455,7 @@ pub fn aiming(
     let wep_h = *ecs.get::<PhysHandle>(wep_ent).ok().or_else(|| {
         let groups = weapon.prelaunch_groups.clone();
         let shape = ncollide2d::shape::Cuboid::new(weapon.hitbox_size.clone());
-        l8r.l8r(move |world| drop(world.add_hitbox(wep_ent, frame_iso, shape, groups)));
+        l8r.l8r(move |world| drop(world.make_physical(wep_ent, frame_iso, shape, groups)));
         None
     })?;
 

@@ -84,8 +84,15 @@ impl World {
         }
     }
 
-    #[inline]
-    pub fn add_hitbox(
+    pub fn remove_physical(
+        &mut self,
+        entity: hecs::Entity,
+        h: PhysHandle
+    ) {
+        phys::phys_remove(&mut self.ecs, &mut self.phys, entity, h)
+    }
+
+    pub fn make_physical(
         &mut self,
         entity: hecs::Entity,
         iso: na::Isometry2<f32>,

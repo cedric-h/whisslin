@@ -48,6 +48,22 @@ pub fn phys_insert(
     h
 }
 
+pub fn phys_remove(
+    ecs: &mut hecs::World,
+    phys: &mut CollisionWorld,
+    entity: hecs::Entity,
+    h: PhysHandle,
+) {
+    phys.remove(&[h]);
+    ecs.remove::<(collision::Contacts, PhysHandle)>(entity)
+        .unwrap_or_else(|e| {
+            panic!(
+                "Couldn't remove Contacts and PhysHandle for Entity[{:?}] when removing phys: {}",
+                entity, e
+            )
+        });
+}
+
 /// DragTowards moves an Entity towards the supplied location (`goal_loc`) until the
 /// Entity's Iso2's translation's `vector` is within the supplied speed (`speed`) of the
 /// given location, at which point the DragTowards component is removed from the Entity
