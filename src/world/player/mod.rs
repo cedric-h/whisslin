@@ -8,10 +8,32 @@ use crate::{
     phys::{self, collide, CollisionGroups, Cuboid, PhysHandle},
 };
 
+#[derive(Copy, Clone, Debug)]
+pub enum PlayerState {
+    Walking,
+    Throwing,
+    Standing
+}
+impl PlayerState {
+    pub fn is_walking(self) -> bool {
+        matches!(self, PlayerState::Walking)
+    }
+
+    pub fn is_throwing(self) -> bool {
+        matches!(self, PlayerState::Throwing)
+    }
+
+    pub fn is_standing(self) -> bool {
+        matches!(self, PlayerState::Standing)
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 struct EachDirection<T> {
-    // boy you turn me inside out
+    // boy you turn me
+    // inside
+    // out
     // and 'round 'round
     up: T,
     side: T,
@@ -45,11 +67,12 @@ struct DirectionConfig {
 #[serde(deny_unknown_fields)]
 pub struct Config {
     directions: EachDirection<DirectionConfig>,
-    weapon: aiming::Weapon,
+    weapon: aiming::WeaponConfig,
     speed: f32,
     stop_decay: f32,
 }
 impl Config {
+    #[cfg(feature = "confui")]
     pub fn dev_ui(&mut self, ui: &mut egui::Ui) {
         ui.collapsing("Speed", |ui| {
             ui.label("speed");
@@ -62,6 +85,7 @@ impl Config {
 }
 
 pub struct Player {
+    pub state: PlayerState,
     pub entity: hecs::Entity,
     pub phys_handle: PhysHandle,
     pub weapon_entity: Option<hecs::Entity>,
@@ -102,6 +126,7 @@ impl Player {
         ));
         Player {
             entity: ent,
+            state: PlayerState::Walking,
             walk_animator: movement::WalkAnimator::default(),
             phys_handle: phys::phys_insert(
                 ecs,

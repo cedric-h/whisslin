@@ -3,7 +3,7 @@ use macroquad::*;
 
 use crate::{
     combat, draw,
-    phys::{self, collide, collision, CollisionGroups, CollisionWorld, Cuboid, PhysHandle},
+    phys::{self, collision, CollisionGroups, CollisionWorld, Cuboid, PhysHandle},
 };
 
 pub mod player;
@@ -18,10 +18,27 @@ pub struct Config {
     pub player: player::Config,
 }
 impl Config {
+    #[cfg(feature = "confui")]
     pub fn dev_ui(&mut self, ui: &mut egui::Ui) {
+        #[cfg(not(target = "wasm32-unknown-unknown"))]
+        egui::Window::new("Save")
+            .fixed_size(egui::vec2(150.0, 70.0))
+            .default_pos(egui::pos2(0.0, 0.0))
+            .show(ui.ctx(), |ui| {
+                if ui.button("To File").clicked {
+                    std::fs::write("config.json", serde_json::to_vec_pretty(&self).unwrap())
+                        .unwrap()
+                }
+            });
+
+        egui::Window::new("Draw")
+            .default_size(egui::vec2(150.0, 600.0))
+            .default_pos(egui::pos2(0.0, 72.0))
+            .show(ui.ctx(), |ui| self.draw.dev_ui(ui));
+
         egui::Window::new("Player")
-            .default_size(egui::vec2(100.0, 600.0))
-            .default_pos(egui::pos2(320.0, 400.0))
+            .default_size(egui::vec2(300.0, 600.0))
+            .default_pos(egui::pos2(164.0, 0.0))
             .show(ui.ctx(), |ui| self.player.dev_ui(ui));
     }
 }
@@ -53,7 +70,7 @@ impl World {
         let mut phys = CollisionWorld::new(0.02);
         let config = serde_json::from_slice(&load_file("config.json").await.unwrap()).unwrap();
 
-        let mut world = Self {
+        Self {
             player: Player::new(&mut ecs, &mut phys, &config),
             map: Map::new(&config),
             images: draw::Images::load(&config).await,
@@ -64,62 +81,7 @@ impl World {
             l8r: L8r::new(),
             dead: vec![],
             draw_state: draw::DrawState::default(),
-        };
-
-        /*
-        for i in 0..4 {
-            let fence = world
-                .ecs
-                .spawn((collision::CollisionStatic, world.images.looks("ruin.png")));
-            world.add_hitbox(
-                fence,
-                na::Isometry2::translation(8.0 + 2.0 * i as f32, 5.25),
-                Cuboid::new(na::Vector2::new(1.0, 0.2) / 2.0),
-                CollisionGroups::new()
-                    .with_membership(&[collide::WORLD])
-                    .with_whitelist(&[collide::PLAYER, collide::ENEMY]),
-            );
-        }*/
-
-        const ENEMY_COUNT: usize = 5;
-        for i in 0..ENEMY_COUNT {
-            let angle = (std::f32::consts::PI * 2.0 / (ENEMY_COUNT as f32)) * (i as f32);
-            let loc = na::UnitComplex::from_angle(angle) * na::Vector2::repeat(15.0);
-            let base_group = CollisionGroups::new().with_membership(&[collide::ENEMY]);
-            let knock_back_not_collide = [collide::ENEMY, collide::PLAYER];
-
-            let slime_art = world.config.draw.art("slime frames/spritesheet.png");
-            let bread = world.ecs.spawn((
-                draw::Looks::art(slime_art),
-                draw::AnimationFrame(
-                    i * world
-                        .config
-                        .draw
-                        .get(slime_art)
-                        .spritesheet
-                        .unwrap()
-                        .frame_rate,
-                ),
-                combat::Health::new(10),
-                phys::collision::RigidGroups(base_group.with_blacklist(&knock_back_not_collide)),
-                phys::LurchChase::new(world.player.entity, 0.35, 0.89),
-                phys::KnockBack {
-                    groups: base_group.with_whitelist(&knock_back_not_collide),
-                    force_decay: 0.8,
-                    force_magnitude: 0.7,
-                    use_force_direction: false,
-                    minimum_speed: None,
-                },
-            ));
-            world.add_hitbox(
-                bread,
-                na::Isometry2::new(loc, 0.0),
-                Cuboid::new(na::Vector2::new(1.1, 0.35) / 2.0),
-                base_group,
-            );
         }
-
-        world
     }
 
     #[inline]
@@ -134,12 +96,18 @@ impl World {
     }
 
     pub fn update(&mut self) {
-        player::movement(self);
+        if !self.player.state.is_throwing() && !self.ui.egui_ctx.wants_keyboard_input() {
+            player::movement(self);
+        }
+
         phys::velocity(self);
         phys::chase(self);
         collision::collision(self);
 
-        player::aiming(self);
+        if !self.ui.egui_ctx.wants_mouse_input() {
+            player::aiming(self);
+        }
+
         combat::hurtful_damage(self);
         combat::health::remove_out_of_health(self);
 
@@ -160,7 +128,13 @@ impl World {
     pub fn draw(&mut self) {
         crate::draw::draw(self);
 
-        let Self { ui, config, .. } = self;
-        ui.macroquad(|ui| config.dev_ui(ui));
+        {
+            #[allow(unused_variables)]
+            let Self { ui, config, .. } = self;
+            ui.macroquad(|ui| {
+                #[cfg(feature = "confui")]
+                config.dev_ui(ui)
+            });
+        }
     }
 }

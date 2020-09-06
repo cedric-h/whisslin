@@ -7,7 +7,7 @@ use macroquad::{is_key_down, KeyCode};
 
 #[derive(Debug, Clone, Copy)]
 pub struct WalkAnimator {
-    direction: Direction,
+    pub(super) direction: Direction,
     last_move: na::Vector2<f32>,
 }
 impl Default for WalkAnimator {
@@ -59,36 +59,42 @@ pub fn movement(
 
         if new_direction != player.walk_animator.direction {
             player.walk_animator.direction = new_direction;
-            let direction_config = config.player.directions.get(new_direction);
-            looks.art = direction_config.art;
-            if let Some(mut wep_looks) = player
-                .weapon_entity
-                .and_then(|e| ecs.get_mut::<Looks>(e).ok())
-            {
-                wep_looks.z_offset = (direction_config.weapon_in_front as u8 * 10) as f32;
-            }
+            player.state = super::PlayerState::Walking;
         }
         looks.flip_x = vel.x < 0.0;
 
         Some(vel)
     } else {
         let ss = config.draw.get(looks.art).spritesheet?;
-        if af.current_frame(ss) == ss.hold_at {
+        if af.at_holding_frame(ss) {
             af.0 -= 1;
             None
         } else {
             player.walk_animator.last_move *= config.player.stop_decay;
             Some(player.walk_animator.last_move)
         }
-    }?;
+    };
 
-    let obj = phys.get_mut(player.phys_handle).expect("player no phys");
-    let mut iso = obj.position().clone();
-    iso.translation.vector += vel;
-    obj.set_position_with_prediction(iso.clone(), {
+    if let super::PlayerState::Walking = player.state {
+        let direction_config = config.player.directions.get(player.walk_animator.direction);
+        looks.art = direction_config.art;
+        if let Some(mut wep_looks) = player
+            .weapon_entity
+            .and_then(|e| ecs.get_mut::<Looks>(e).ok())
+        {
+            wep_looks.z_offset = (direction_config.weapon_in_front as u8 * 10) as f32;
+        }
+    }
+
+    if let Some(vel) = vel {
+        let obj = phys.get_mut(player.phys_handle).expect("player no phys");
+        let mut iso = obj.position().clone();
         iso.translation.vector += vel;
-        iso
-    });
+        obj.set_position_with_prediction(iso.clone(), {
+            iso.translation.vector += vel;
+            iso
+        });
+    }
 
     Some(())
 }

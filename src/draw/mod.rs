@@ -1,6 +1,8 @@
 use crate::{phys::PhysHandle, world, World};
 use macroquad::{drawing::Texture2D, *};
-use std::fmt;
+use std::{fmt, num::NonZeroUsize};
+
+const ONE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(1) };
 
 mod cam;
 pub use cam::CedCam2D;
@@ -20,6 +22,20 @@ impl Config {
                 .position(|a| a.file == file)
                 .unwrap_or_else(|| panic!("no art by name of {}", file)),
         )
+    }
+
+    #[cfg(feature = "confui")]
+    pub fn dev_ui(&mut self, ui: &mut egui::Ui) {
+        ui.label("zoom");
+        ui.add(egui::DragValue::f32(&mut self.zoom).speed(0.005));
+        ui.label("tile size");
+        ui.add(egui::DragValue::f32(&mut self.tile_size).speed(0.005));
+
+        ui.collapsing("Art", |ui| {
+            for art in self.art.iter_mut() {
+                ui.collapsing(&art.file.clone(), |ui| art.dev_ui(ui));
+            }
+        });
     }
 
     pub fn get(&self, art: ArtHandle) -> &ArtConfig {
@@ -95,7 +111,11 @@ impl Images {
 pub struct AnimationFrame(pub usize);
 impl AnimationFrame {
     pub fn current_frame(self, ss: Spritesheet) -> usize {
-        self.0 / ss.frame_rate as usize % ss.total
+        self.0 / ss.frame_rate as usize % ss.total.get()
+    }
+
+    pub fn at_holding_frame(self, ss: Spritesheet) -> bool {
+        self.current_frame(ss) == ss.hold_at
     }
 }
 
@@ -110,18 +130,75 @@ pub fn animate(World { ecs, .. }: &mut World) {
 pub struct ArtConfig {
     pub file: String,
     pub scale: f32,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub spritesheet: Option<Spritesheet>,
+}
+impl ArtConfig {
+    #[cfg(feature = "confui")]
+    fn dev_ui(&mut self, ui: &mut egui::Ui) {
+        ui.label("file name");
+        ui.add(egui::TextEdit::new(&mut self.file));
+
+        ui.label("scale");
+        ui.add(egui::DragValue::f32(&mut self.scale).speed(0.0001));
+
+        let mut has_spritesheet = self.spritesheet.is_some();
+        ui.checkbox("spritesheet", &mut has_spritesheet);
+        ui.collapsing("spritesheet", |ui| {
+            match (has_spritesheet, &mut self.spritesheet) {
+                (false, ss @ Some(_)) => *ss = None,
+                (true, None) => self.spritesheet = Some(Default::default()),
+                (true, Some(ss)) => ss.dev_ui(ui),
+                (false, None) => {}
+            }
+        });
+    }
 }
 
 #[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Spritesheet {
-    pub rows: usize,
-    pub columns: usize,
-    pub total: usize,
+    pub rows: NonZeroUsize,
+    pub columns: NonZeroUsize,
+    pub total: NonZeroUsize,
     pub frame_rate: usize,
     pub hold_at: usize,
+}
+impl Default for Spritesheet {
+    fn default() -> Self {
+        Self {
+            rows: ONE,
+            columns: ONE,
+            total: ONE,
+            frame_rate: 1,
+            hold_at: 0,
+        }
+    }
+}
+impl Spritesheet {
+    #[cfg(feature = "confui")]
+    fn dev_ui(&mut self, ui: &mut egui::Ui) {
+        let mut non_zero_drag = |label: &'static str, nz: &mut NonZeroUsize| {
+            ui.label(label);
+
+            let mut f = nz.get() as f32;
+            ui.add(egui::DragValue::f32(&mut f));
+            *nz = NonZeroUsize::new(f.round() as usize).unwrap_or(ONE)
+        };
+        non_zero_drag("rows", &mut self.rows);
+        non_zero_drag("columns", &mut self.columns);
+        non_zero_drag("total", &mut self.total);
+
+        let mut usize_drag = |label: &'static str, u: &mut usize| {
+            ui.label(label);
+
+            let mut f = *u as f32;
+            ui.add(egui::DragValue::f32(&mut f));
+            *u = f as usize
+        };
+        usize_drag("frame rate", &mut self.frame_rate);
+        usize_drag("hold at", &mut self.hold_at);
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -211,7 +288,7 @@ pub fn draw(
         let size = {
             let size = vec2(image.width(), image.height());
             match anim_frame.and(art.spritesheet) {
-                Some(ss) => size / vec2(ss.columns as f32, ss.rows as f32),
+                Some(ss) => size / vec2(ss.columns.get() as f32, ss.rows.get() as f32),
                 _ => size,
             }
         };
@@ -225,8 +302,8 @@ pub fn draw(
                 dest_size: Some(world_size),
                 source: art.spritesheet.and_then(|ss| {
                     let af = anim_frame?.current_frame(ss);
-                    let row = af / ss.columns;
-                    let column = af % ss.columns;
+                    let row = af / ss.columns.get();
+                    let column = af % ss.columns.get();
                     Some(Rect {
                         x: column as f32 * size.x(),
                         y: row as f32 * size.y(),
