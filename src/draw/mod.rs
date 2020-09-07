@@ -13,6 +13,7 @@ pub struct Config {
     pub zoom: f32,
     pub tile_size: f32,
     pub camera_move: f32,
+	pub tile_art: ArtHandle,
     pub art: Vec<ArtConfig>,
 }
 impl Config {
@@ -198,6 +199,14 @@ impl Default for Spritesheet {
     }
 }
 impl Spritesheet {
+	/// Coords are in terms of tiles, not pixels.
+	/// Multiply by tile texture size for pixel coords.
+	fn coords(self, af: usize) -> glam::Vec2 {
+		let row = af / self.columns.get();
+		let column = af % self.columns.get();
+		vec2(column as f32, row as f32)
+	}
+
     #[cfg(feature = "confui")]
     fn dev_ui(&mut self, ui: &mut egui::Ui) {
         let mut non_zero_drag = |label: &'static str, nz: &mut NonZeroUsize| {
@@ -275,15 +284,29 @@ pub fn draw(
 
     let camera = config.draw.camera(player_iso_inverse);
     set_camera(camera);
+	let tile_image = images.get(config.draw.tile_art);
+	let tile_ss = config.draw.get(config.draw.tile_art).spritesheet.unwrap();
+	let tile_image_size = {
+		let size = vec2(tile_image.width(), tile_image.height());
+		size / vec2(tile_ss.columns.get() as f32, tile_ss.rows.get() as f32)
+	};
     for tile in map.tiles.iter() {
-        let image = images.get(tile.image);
         draw_texture_ex(
-            *image,
+            *tile_image,
             tile.translation.x,
             tile.translation.y,
             WHITE,
             DrawTextureParams {
                 dest_size: Some(vec2(1.02, 1.085) * 2.0 * config.draw.tile_size),
+				source: {
+					let coords = tile_ss.coords(tile.spritesheet_index) * tile_image_size;
+                    Some(Rect {
+                        x: coords.x(),
+                        y: coords.y(),
+                        w: tile_image_size.x(),
+                        h: tile_image_size.y(),
+                    })
+				},
                 ..Default::default()
             },
         )
@@ -334,12 +357,10 @@ pub fn draw(
             DrawTextureParams {
                 dest_size: Some(world_size),
                 source: art.spritesheet.and_then(|ss| {
-                    let af = anim_frame?.current_frame(ss);
-                    let row = af / ss.columns.get();
-                    let column = af % ss.columns.get();
+					let coords = ss.coords(anim_frame?.current_frame(ss)) * size;
                     Some(Rect {
-                        x: column as f32 * size.x(),
-                        y: row as f32 * size.y(),
+                        x: coords.x(),
+                        y: coords.y(),
                         w: size.x(),
                         h: size.y(),
                     })
@@ -349,6 +370,7 @@ pub fn draw(
         )
     }
 
+	#[cfg(feature = "confui")]
     if config.draw_debug {
         for obj in ecs
             .query::<&PhysHandle>()

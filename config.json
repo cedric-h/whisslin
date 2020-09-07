@@ -1,9 +1,10 @@
 {
-  "draw_debug": true,
+  "draw_debug": false,
   "draw": {
     "zoom": 3.2,
     "tile_size": 0.48,
     "camera_move": 0.41,
+	"tile_art": 5,
     "art": [
       {
         "file": "golem frames/side_spritesheet.png",
@@ -55,16 +56,15 @@
         "align": "Center"
       },
       {
-        "file": "grass_1.png",
-        "scale": 0.0016
-      },
-      {
-        "file": "grass_2.png",
-        "scale": 0.0016
-      },
-      {
-        "file": "grass_3.png",
-        "scale": 0.0016
+        "file": "tiles.png",
+        "scale": 0.0016,
+		"spritesheet": {
+			"rows": 1,
+			"columns": 3,
+			"total": 3,
+			"frame_rate": 1,
+			"hold_at": 0
+		}
       },
       {
         "file": "slime frames/spritesheet.png",

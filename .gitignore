@@ -12,3 +12,9 @@ Cargo.lock
 # Vim backup files
 **/*.swp
 **/*.swo
+
+# wapm stuff
+wapm.lock
+wapm_packages/
+
+build/
