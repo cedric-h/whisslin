@@ -14,6 +14,7 @@ pub use map::Map;
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
+    pub draw_debug: bool,
     pub draw: draw::Config,
     pub player: player::Config,
 }
@@ -21,24 +22,25 @@ impl Config {
     #[cfg(feature = "confui")]
     pub fn dev_ui(&mut self, ui: &mut egui::Ui) {
         #[cfg(not(target = "wasm32-unknown-unknown"))]
-        egui::Window::new("Save")
-            .fixed_size(egui::vec2(150.0, 70.0))
+        egui::Window::new("Config")
+            .default_size(egui::vec2(200.0, 100.0))
             .default_pos(egui::pos2(0.0, 0.0))
             .show(ui.ctx(), |ui| {
-                if ui.button("To File").clicked {
+                if ui.button("Save To File").clicked {
                     std::fs::write("config.json", serde_json::to_vec_pretty(&self).unwrap())
                         .unwrap()
                 }
+                ui.checkbox("draw debug geometry", &mut self.draw_debug);
             });
 
         egui::Window::new("Draw")
-            .default_size(egui::vec2(150.0, 600.0))
-            .default_pos(egui::pos2(0.0, 72.0))
+            .default_size(egui::vec2(200.0, 600.0))
+            .default_pos(egui::pos2(0.0, 94.0))
             .show(ui.ctx(), |ui| self.draw.dev_ui(ui));
 
         egui::Window::new("Player")
             .default_size(egui::vec2(300.0, 600.0))
-            .default_pos(egui::pos2(164.0, 0.0))
+            .default_pos(egui::pos2(214.0, 0.0))
             .show(ui.ctx(), |ui| self.player.dev_ui(ui));
     }
 }
@@ -84,11 +86,7 @@ impl World {
         }
     }
 
-    pub fn remove_physical(
-        &mut self,
-        entity: hecs::Entity,
-        h: PhysHandle
-    ) {
+    pub fn remove_physical(&mut self, entity: hecs::Entity, h: PhysHandle) {
         phys::phys_remove(&mut self.ecs, &mut self.phys, entity, h)
     }
 

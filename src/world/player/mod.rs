@@ -12,7 +12,7 @@ use crate::{
 pub enum PlayerState {
     Walking,
     Throwing,
-    Standing
+    Standing,
 }
 impl PlayerState {
     pub fn is_walking(self) -> bool {
@@ -133,7 +133,7 @@ impl Player {
                 phys,
                 ent,
                 na::Isometry::identity(),
-                Cuboid::new(na::Vector2::new(0.7, 0.3) / 2.0),
+                Cuboid::new(na::Vector2::new(0.6, 0.15) / 2.0),
                 CollisionGroups::new().with_membership(&[phys::collide::PLAYER]),
             ),
             weapon_entity: Some(wep_ent),

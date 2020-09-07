@@ -10,6 +10,14 @@ pub use world::World;
 async fn main() {
     let mut w = World::new().await;
 
+    #[cfg(feature = "confui")]
+    loop {
+        w.draw();
+        w.update();
+        next_frame().await;
+    }
+
+    #[cfg(not(feature = "confui"))]
     loop {
         w.update();
         w.draw();

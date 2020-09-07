@@ -1,11 +1,13 @@
 {
+  "draw_debug": true,
   "draw": {
-    "zoom": 8.0,
-    "tile_size": 1.5,
+    "zoom": 3.2,
+    "tile_size": 0.48,
+    "camera_move": 0.41,
     "art": [
       {
         "file": "golem frames/side_spritesheet.png",
-        "scale": 0.0078125,
+        "scale": 0.0025,
         "spritesheet": {
           "rows": 3,
           "columns": 4,
@@ -16,7 +18,7 @@
       },
       {
         "file": "golem frames/down_spritesheet.png",
-        "scale": 0.0078125,
+        "scale": 0.0025,
         "spritesheet": {
           "rows": 3,
           "columns": 4,
@@ -27,7 +29,7 @@
       },
       {
         "file": "golem frames/up_spritesheet.png",
-        "scale": 0.0078125,
+        "scale": 0.0025,
         "spritesheet": {
           "rows": 3,
           "columns": 4,
@@ -38,7 +40,7 @@
       },
       {
         "file": "golem frames/weapon_ready_spritesheet.png",
-        "scale": 0.0078125,
+        "scale": 0.0025,
         "spritesheet": {
           "rows": 3,
           "columns": 5,
@@ -49,23 +51,24 @@
       },
       {
         "file": "baseball.png",
-        "scale": 0.005
+        "scale": 0.0016,
+        "align": "Center"
       },
       {
         "file": "grass_1.png",
-        "scale": 0.005
+        "scale": 0.0016
       },
       {
         "file": "grass_2.png",
-        "scale": 0.005
+        "scale": 0.0016
       },
       {
         "file": "grass_3.png",
-        "scale": 0.005
+        "scale": 0.0016
       },
       {
         "file": "slime frames/spritesheet.png",
-        "scale": 0.0078125,
+        "scale": 0.0025,
         "spritesheet": {
           "rows": 4,
           "columns": 5,
@@ -93,61 +96,69 @@
     },
     "weapon": {
       "offset": [
-        -0.35,
-        -0.41
+        -0.129,
+        -0.497
       ],
-      "bottom_offset": -0.0,
+      "screen_offset": [
+        -50.4,
+        -68.18
+      ],
+      "bottom_offset": 0.0,
       "reload_time": 60,
-      "force_magnitude": 0.85,
-      "force_decay": 0.84,
+      "force_magnitude": 0.4,
+      "force_decay": 0.877,
       "hitbox_size": [
-        0.24,
-        0.24
+        0.09,
+        0.09
       ],
       "boomerang": true,
-      "player_knock_back_force": 0.5,
-      "player_knock_back_decay": 0.75,
+      "player_knock_back_force": 0.09,
+      "player_knock_back_decay": 0.914,
       "keyframes": [
         {
           "time": 0.0,
           "pos": [
-            0.45,
-            0.42
+            0.144,
+            -0.35
           ],
           "rot": 25.0,
-          "bottom_offset": -0.0
+          "bottom_offset": 0.0,
+          "behind_wielder": false
         },
         {
-          "time": 0.2,
+          "time": 0.33,
           "pos": [
-            0.5,
-            -0.8
+            0.2496,
+            -0.864
           ],
           "rot": -45.0,
-          "bottom_offset": -0.0
+          "bottom_offset": 0.0,
+          "behind_wielder": false
         },
         {
-          "time": 0.4,
+          "time": 0.76,
           "pos": [
-            0.6,
-            -0.9
+            -0.064,
+            -0.7
           ],
           "rot": -200.0,
-          "bottom_offset": -0.0
+          "bottom_offset": 0.0,
+          "behind_wielder": true
         },
         {
-          "time": 0.7,
+          "time": 0.91,
           "pos": [
-            -0.35,
-            -0.41
+            -0.129,
+            -0.497
           ],
           "rot": 0.0,
-          "bottom_offset": -0.3
+          "bottom_offset": 0.0,
+          "behind_wielder": false
         }
       ],
       "animation_art": 3
     },
-    "speed": 0.134,
+    "speed": 0.039,
     "stop_decay": 0.92
   }
 }

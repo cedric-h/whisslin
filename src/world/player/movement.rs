@@ -78,12 +78,6 @@ pub fn movement(
     if let super::PlayerState::Walking = player.state {
         let direction_config = config.player.directions.get(player.walk_animator.direction);
         looks.art = direction_config.art;
-        if let Some(mut wep_looks) = player
-            .weapon_entity
-            .and_then(|e| ecs.get_mut::<Looks>(e).ok())
-        {
-            wep_looks.z_offset = (direction_config.weapon_in_front as u8 * 10) as f32;
-        }
     }
 
     if let Some(vel) = vel {

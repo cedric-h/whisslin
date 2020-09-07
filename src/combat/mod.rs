@@ -89,7 +89,7 @@ pub fn hurtful_damage(world: &mut crate::World) {
     let ecs = &world.ecs;
     let phys = &world.phys;
 
-    for (_, (collision::Contacts(contacts), &h, hurtful, force)) in ecs
+    for (_, (contacts, &h, hurtful, force)) in ecs
         .query::<(
             &collision::Contacts,
             &PhysHandle,

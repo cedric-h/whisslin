@@ -30,22 +30,28 @@ impl std::ops::DerefMut for RigidGroups {
 }
 
 /// Records all of the other entities this entity is touching
-pub struct Contacts(pub FxHashSet<Entity>);
+pub struct Contacts {
+    pub inner: FxHashSet<Entity>,
+    force: na::Vector2<f32>,
+}
 impl Contacts {
     pub fn new() -> Self {
-        Self(FxHashSet::default())
+        Self {
+            inner: FxHashSet::default(),
+            force: na::zero(),
+        }
     }
 }
 impl std::ops::Deref for Contacts {
     type Target = FxHashSet<Entity>;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.inner
     }
 }
 impl std::ops::DerefMut for Contacts {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+        &mut self.inner
     }
 }
 
@@ -106,13 +112,21 @@ pub fn collision(world: &mut World) {
         }
     });
 
-    for (collided_ent, (Contacts(contacts), &collided_h, rigid_groups)) in ecs
-        .query::<(&_, &_, Option<&RigidGroups>)>()
+    for (
+        collided_ent,
+        (
+            Contacts {
+                inner: contacts,
+                force,
+            },
+            &collided_h,
+            rigid_groups,
+        ),
+    ) in ecs
+        .query::<(&mut _, &_, Option<&RigidGroups>)>()
         .without::<CollisionStatic>()
         .iter()
     {
-        let mut contacted_displacement = na::Vector2::zeros();
-
         for &other_ent in contacts.iter() {
             // if the recorded contact is with an entity that can't be found,
             // just ignore it, they've probably been deleted or something.
@@ -125,9 +139,13 @@ pub fn collision(world: &mut World) {
                     }
                 };
 
-                if let Some((_, _, _, contacts)) = phys.contact_pair(collided_h, other_h, true) {
+                if let Some((l, _, _, contacts)) = phys.contact_pair(collided_h, other_h, true) {
                     let deepest = contacts.deepest_contact().unwrap().contact;
-                    contacted_displacement -= deepest.normal.into_inner() * deepest.depth;
+                    let mut normal = deepest.normal.into_inner() * deepest.depth;
+                    if l == collided_h {
+                        normal *= -1.0
+                    }
+                    *force += normal;
                 }
             }
         }
@@ -139,8 +157,10 @@ pub fn collision(world: &mut World) {
             )
         });
 
+        *force *= 0.87;
+
         let mut iso = obj.position().clone();
-        iso.translation.vector += contacted_displacement;
+        iso.translation.vector += *force;
         obj.set_position(iso);
     }
 }

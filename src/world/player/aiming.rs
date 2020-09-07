@@ -12,12 +12,12 @@ pub struct Rot(pub f32);
 impl Rot {
     fn as_unit(self) -> na::Unit<na::Vector2<f32>> {
         na::Unit::new_normalize(
-            na::UnitComplex::from_angle(self.0).transform_vector(&na::Vector2::y()),
+            na::UnitComplex::from_angle(self.0).transform_vector(&na::Vector2::x()),
         )
     }
 
     fn from_unit(unit: na::Unit<na::Vector2<f32>>) -> Self {
-        Rot(unit.angle(&na::Vector2::y()))
+        Rot(unit.angle(&na::Vector2::x()))
     }
 }
 
@@ -37,6 +37,7 @@ pub struct Keyframe {
     pub pos: na::Vector2<f32>,
     pub rot: Rot,
     pub bottom_offset: f32,
+    pub behind_wielder: bool,
     #[cfg(feature = "confui")]
     #[serde(skip, default)]
     removal_checkbox_checked: bool,
@@ -79,9 +80,11 @@ impl Keyframe {
 
         ui.label("position");
         ui.horizontal(|ui| {
-            ui.add(egui::DragValue::f32(&mut self.pos.x).speed(0.01));
-            ui.add(egui::DragValue::f32(&mut self.pos.y).speed(0.01));
+            ui.add(egui::DragValue::f32(&mut self.pos.x).speed(0.001));
+            ui.add(egui::DragValue::f32(&mut self.pos.y).speed(0.001));
         });
+
+        ui.checkbox("behind player", &mut self.behind_wielder);
 
         None
     }
@@ -172,7 +175,10 @@ impl Wielder {
 fn weapon_hitbox_groups() -> phys::CollisionGroups {
     phys::CollisionGroups::new()
         .with_membership(&[phys::collide::WEAPON])
-        .with_whitelist(&[phys::collide::WORLD, phys::collide::ENEMY])
+        .with_whitelist(&[
+            phys::collide::WORLD,
+            phys::collide::ENEMY,
+        ])
 }
 fn weapon_prelaunch_groups() -> phys::CollisionGroups {
     phys::CollisionGroups::new()
@@ -184,6 +190,7 @@ fn weapon_prelaunch_groups() -> phys::CollisionGroups {
 pub struct WeaponConfig {
     // positioning
     offset: na::Vector2<f32>,
+    screen_offset: na::Vector2<f32>,
     bottom_offset: f32,
 
     // timing
@@ -232,8 +239,9 @@ impl WeaponConfig {
         let mut last = Keyframe {
             time: 1.0,
             pos: self.offset,
-            rot: Rot(mouse_delta.angle(&na::Vector2::y())),
+            rot: Rot(mouse_delta.angle(&na::Vector2::x())),
             bottom_offset: self.bottom_offset,
+            behind_wielder: false,
             #[cfg(feature = "confui")]
             removal_checkbox_checked: false,
             #[cfg(feature = "confui")]
@@ -248,7 +256,7 @@ impl WeaponConfig {
                 &last,
             ),
             WielderState::Readied | WielderState::Shooting => {
-                last.rot.0 = 0.0;
+                //last.rot.0 = 0.0;
                 last.bottom_offset = 0.0;
                 last
             }
@@ -282,6 +290,7 @@ impl WeaponConfig {
             pos: lf.pos.lerp(&rf.pos, prog),
             rot: Rot::from_unit(lf.rot.as_unit().slerp(&rf.rot.into(), prog)),
             bottom_offset: lf.bottom_offset + (rf.bottom_offset - lf.bottom_offset) * prog,
+            behind_wielder: rf.behind_wielder,
             #[cfg(feature = "confui")]
             removal_checkbox_checked: false,
             #[cfg(feature = "confui")]
@@ -297,8 +306,14 @@ impl WeaponConfig {
 
             ui.label("position");
             ui.horizontal(|ui| {
-                ui.add(egui::DragValue::f32(&mut self.offset.x).speed(0.01));
-                ui.add(egui::DragValue::f32(&mut self.offset.y).speed(0.01));
+                ui.add(egui::DragValue::f32(&mut self.offset.x).speed(0.001));
+                ui.add(egui::DragValue::f32(&mut self.offset.y).speed(0.001));
+            });
+
+            ui.label("screen offset");
+            ui.horizontal(|ui| {
+                ui.add(egui::DragValue::f32(&mut self.screen_offset.x).speed(0.01));
+                ui.add(egui::DragValue::f32(&mut self.screen_offset.y).speed(0.01));
             });
         });
 
@@ -331,7 +346,7 @@ impl WeaponConfig {
 
             ui.add(
                 egui::Slider::f32(&mut self.player_knock_back_decay, 0.0..=1.0)
-                    .text("player knock back decay")
+                    .text("player knock back decay"),
             );
         });
 
@@ -341,12 +356,11 @@ impl WeaponConfig {
                 .iter_mut()
                 .enumerate()
                 .filter_map(|(i, kf)| {
-                    ui
-                        .collapsing(format!("keyframe {}", i), |ui| match kf.dev_ui(ui) {
-                            Some(KeyframeDevUiEvent::Remove) => Some(i),
-                            None => None,
-                        })
-                        .and_then(|x| x)
+                    ui.collapsing(format!("keyframe {}", i), |ui| match kf.dev_ui(ui) {
+                        Some(KeyframeDevUiEvent::Remove) => Some(i),
+                        None => None,
+                    })
+                    .and_then(|x| x)
                 })
                 // there can only ever be one removed per frame, so ...
                 .next();
@@ -368,6 +382,7 @@ pub fn aiming(
         phys,
         config:
             world::Config {
+                draw_debug,
                 player: world::player::Config { weapon, .. },
                 draw: draw_config,
             },
@@ -385,17 +400,32 @@ pub fn aiming(
     }: &mut World,
 ) -> Option<()> {
     let wielder_iso = phys.collision_object(*wielder_h)?.position();
+    let wielder_flipped = ecs.get::<draw::Looks>(*wielder_ent).ok()?.flip_x;
     let wep_ent = weapon_entity.clone()?;
 
     // physics temporaries
-    let mouse = {
-        let (mouse_x, mouse_y) = mouse_position();
-        let x = -(mouse_x - screen_width() / 2.0);
-        let y = mouse_y - screen_height() / 2.0;
-        let cam = draw_config.camera(na::Isometry2::translation(weapon.offset.x, weapon.offset.y).inverse());
-        cam.world_to_screen(na::Vector2::new(x, y))
-    };
-    let delta = -na::Unit::new_normalize(mouse);
+    let delta = na::Unit::new_normalize({
+        let mouse_pos = {
+            let (mouse_x, mouse_y) = mouse_position();
+            na::Vector2::new(mouse_x, mouse_y)
+        };
+        let wep_screen_pos = {
+            let screen = na::Vector2::new(screen_width(), screen_height());
+            let mut offset = screen.component_div(&weapon.screen_offset);
+            offset.x *= if wielder_flipped { -1.0 } else { 1.0 };
+            offset.y *= screen.x / screen.y;
+            offset.y += draw_config.camera_move;
+            screen / 2.0 + offset
+        };
+
+        #[cfg(feature = "confui")]
+        if *draw_debug {
+            macroquad::set_default_camera();
+            macroquad::draw_circle(wep_screen_pos.x, wep_screen_pos.y, 5.0, RED);
+        }
+
+        mouse_pos - wep_screen_pos
+    });
     let mouse_down = is_mouse_button_down(MouseButton::Left);
 
     let readying_animation_length = match draw_config.get(weapon.animation_art).spritesheet {
@@ -404,7 +434,7 @@ pub fn aiming(
     };
 
     // updating the wielder's looks if throwing should be in control
-    let wielder_flipped = {
+    {
         let mut looks = ecs.get_mut::<draw::Looks>(*wielder_ent).ok()?;
 
         let frame = match wielder.state {
@@ -426,9 +456,7 @@ pub fn aiming(
                 *player_state = super::PlayerState::Walking;
             }
         };
-
-        looks.flip_x
-    };
+    }
 
     // if they quit preparing to throw in the middle, we need to unphysicalize the weapon
     if matches!(wielder.state, WielderState::Readying { .. }) && !mouse_down {
@@ -437,14 +465,28 @@ pub fn aiming(
         }
     }
 
-    wielder.advance_state(mouse_down, &weapon, readying_animation_length);
-    let frame = weapon.animation_frame(delta, wielder.state, readying_animation_length)?;
+    let frame = {
+        use WielderState::*;
 
-    // updating the weapon's looks
-    {
         let mut wep_looks = ecs.get_mut::<draw::Looks>(wep_ent).ok()?;
+
+        // make sure boomerang weapons don't render over the player when they're laying on the ground
+        if weapon.boomerang && matches!(wielder.state, Readied) {
+            wep_looks.z_offset = 0.0;
+        }
+
+        wielder.advance_state(mouse_down, &weapon, readying_animation_length);
+        let frame = weapon.animation_frame(delta, wielder.state, readying_animation_length)?;
+
         wep_looks.bottom_offset = frame.bottom_offset;
-    }
+        wep_looks.z_offset = match (wielder.state, mouse_down) {
+            (Readied, true) => 10.0,
+            (Readying { .. }, true) if !frame.behind_wielder => 10.0,
+            _ => 0.0,
+        };
+
+        frame
+    };
 
     // handle positioning
     let mut frame_iso = frame.into_iso2();
@@ -458,6 +500,11 @@ pub fn aiming(
         l8r.l8r(move |world| drop(world.make_physical(wep_ent, frame_iso, shape, groups)));
         None
     })?;
+
+    if matches!(wielder.state, WielderState::Readying { timer: 0 }) && weapon.boomerang {
+        #[allow(deprecated)]
+        phys.set_collision_groups(wep_h, weapon.prelaunch_groups);
+    }
 
     let wep_obj = phys.get_mut(wep_h)?;
     wep_obj.set_position(frame_iso);

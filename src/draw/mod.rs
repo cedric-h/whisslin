@@ -1,9 +1,9 @@
 use crate::{phys::PhysHandle, world, World};
 use macroquad::{drawing::Texture2D, *};
 use std::{fmt, num::NonZeroUsize};
+use ncollide2d::shape::Cuboid;
 
 const ONE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(1) };
-
 mod cam;
 pub use cam::CedCam2D;
 
@@ -12,6 +12,7 @@ pub use cam::CedCam2D;
 pub struct Config {
     pub zoom: f32,
     pub tile_size: f32,
+    pub camera_move: f32,
     pub art: Vec<ArtConfig>,
 }
 impl Config {
@@ -30,6 +31,8 @@ impl Config {
         ui.add(egui::DragValue::f32(&mut self.zoom).speed(0.005));
         ui.label("tile size");
         ui.add(egui::DragValue::f32(&mut self.tile_size).speed(0.005));
+        ui.label("camera move");
+        ui.add(egui::DragValue::f32(&mut self.camera_move).speed(0.01));
 
         ui.collapsing("Art", |ui| {
             for art in self.art.iter_mut() {
@@ -95,7 +98,7 @@ impl Images {
                 BLACK,
             );
             draw_text(&name.file, 20.0, 20.0, 20.0, DARKGRAY);
-            images.push(load_texture(&name.file).await);
+            images.push(load_texture(&format!("art/{}", name.file)).await);
             next_frame().await;
         }
 
@@ -132,6 +135,8 @@ pub struct ArtConfig {
     pub scale: f32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub spritesheet: Option<Spritesheet>,
+    #[serde(default, skip_serializing_if = "Align::is_bottom")]
+    pub align: Align,
 }
 impl ArtConfig {
     #[cfg(feature = "confui")]
@@ -152,6 +157,23 @@ impl ArtConfig {
                 (false, None) => {}
             }
         });
+    }
+}
+
+#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum Align {
+    Center,
+    Bottom,
+}
+impl Default for Align {
+    fn default() -> Self {
+        Align::Bottom
+    }
+}
+impl Align {
+    pub fn is_bottom(&self) -> bool {
+        matches!(self, Align::Bottom)
     }
 }
 
@@ -223,8 +245,9 @@ impl Looks {
 
 #[derive(Default)]
 pub struct DrawState {
-    sprites: Vec<(Looks, na::Isometry2<f32>, Option<AnimationFrame>)>,
+    sprites: Vec<SpriteData>,
 }
+type SpriteData = (Looks, na::Isometry2<f32>, na::Vector2<f32>, Option<AnimationFrame>);
 
 pub fn draw(
     World {
@@ -240,12 +263,17 @@ pub fn draw(
 ) {
     clear_background(Color([23, 138, 75, 255]));
 
-    let player_iso = phys
-        .collision_object(player.phys_handle)
-        .unwrap()
-        .position();
+    let player_iso_inverse = {
+        let mut i = phys
+            .collision_object(player.phys_handle)
+            .unwrap()
+            .position()
+            .inverse();
+        i.translation.vector.y += config.draw.camera_move;
+        i
+    };
 
-    let camera = config.draw.camera(player_iso.inverse());
+    let camera = config.draw.camera(player_iso_inverse);
     set_camera(camera);
     for tile in map.tiles.iter() {
         let image = images.get(tile.image);
@@ -265,12 +293,14 @@ pub fn draw(
         ecs.query::<(&Looks, &PhysHandle, Option<&AnimationFrame>)>()
             .iter()
             .filter_map(|(_, (&l, &h, af))| {
-                Some((l, *phys.collision_object(h)?.position(), af.copied()))
+                let o = phys.collision_object(h)?;
+                let half_extents = o.shape().as_shape::<Cuboid<f32>>().unwrap().half_extents;
+                Some((l, *o.position(), half_extents, af.copied()))
             }),
     );
 
     draw_state.sprites.sort_unstable_by(|a, b| {
-        fn f((looks, iso_a, _): &(Looks, na::Isometry2<f32>, Option<AnimationFrame>)) -> f32 {
+        fn f((looks, iso_a, _, _): &SpriteData) -> f32 {
             iso_a.translation.vector.y + looks.z_offset
         }
 
@@ -278,10 +308,10 @@ pub fn draw(
             .unwrap_or(std::cmp::Ordering::Greater)
     });
 
-    for (looks, iso, anim_frame) in draw_state.sprites.drain(..) {
+    for (looks, iso, half_size, anim_frame) in draw_state.sprites.drain(..) {
         let camera = config
             .draw
-            .camera_x_flipped(player_iso.inverse() * iso, looks.flip_x);
+            .camera_x_flipped(player_iso_inverse * iso, looks.flip_x);
         set_camera(camera);
         let art = config.draw.get(looks.art);
         let image = images.get(looks.art);
@@ -296,7 +326,10 @@ pub fn draw(
         draw_texture_ex(
             *image,
             world_size.x() / -2.0,
-            world_size.y() / -2.0 - looks.bottom_offset,
+            match art.align {
+                Align::Bottom => -world_size.y() + half_size.y - looks.bottom_offset,
+                Align::Center => world_size.y() / -2.0 - looks.bottom_offset,
+            },
             WHITE,
             DrawTextureParams {
                 dest_size: Some(world_size),
@@ -314,5 +347,28 @@ pub fn draw(
                 ..Default::default()
             },
         )
+    }
+
+    if config.draw_debug {
+        for obj in ecs
+            .query::<&PhysHandle>()
+            .iter()
+            .filter_map(|(_, &h)| phys.collision_object(h))
+        {
+            let half = obj
+                .shape()
+                .as_shape::<Cuboid<f32>>()
+                .unwrap()
+                .half_extents;
+            let size = half * 2.0;
+            let pos = -half;
+
+            let camera = config
+                .draw
+                .camera(player_iso_inverse * obj.position());
+            set_camera(camera);
+
+            draw_rectangle_lines(pos.x, pos.y, size.x, size.y, 0.01, RED);
+        }
     }
 }
