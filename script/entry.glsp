@@ -1,0 +1,157 @@
+(let-fn rand-vec2 (min-magn (? max-magn min-magn))
+  (.* (.norm (Vec2 (rand -1.0 1.0) (rand -1.0 1.0)))
+      (rand min-magn max-magn)))
+
+; Bugs wander around from plant to plant, bobbing happily.
+(let-class BugWander
+  ; used to stop bobs from building up cumulatively
+  (field last-time)
+  ; used to give each bug a different bob
+  (field bob-seed)
+  ; where this bug headin'?
+  (field goal)
+  ; what GrassClump entity is the bug heading towards?
+  (field goal-ent)
+
+  (init (me)
+    (@gen-goal me)
+    (= @last-time (time)
+       @bob-seed (rand 100)))
+
+  ; called when the bug is created and at random intervals afterwards,
+  ; changes the bug's heading and flips its art to look towards there.
+  (meth gen-goal (me)
+    (= @goal-ent (rand-select ..(instances-of 'GrassClump))
+       @goal (.+ (rand-vec2 0.45 0.65) [@goal-ent 'pos])
+
+       [me 'look-toward]
+         (if (< [[me 'pos] 'x] [@goal 'x])
+           'left
+           'right)))
+
+  ; helper function for bob-offset, turns a height, frequency, and timestamp
+  ; into a one dimensional offset for that point in time.
+  (meth bob (height freq ti)
+    (* height (sin (* freq (+ ti @bob-seed)))))
+
+  ; takes a timestamp, returns a Vec2 you can move
+  ; something by each frame to make it bob around
+  (meth bob-offset (t)
+        ; sideways bobs
+    (Vec2 (+ (@bob 0.07, 3.0 t)
+             (@bob 0.20, 0.2 t))
+          ; up-down bobs
+          (+ (@bob 0.02, 5.0 t)
+             (@bob 0.02, 0.1 t))))
+
+  (meth update (me)
+    (.move me (.+
+      (.- (@bob-offset (time)) (@bob-offset @last-time))
+      (.toward [me 'pos]
+               (.+ (@bob-offset (time)) @goal)
+               0.0045)))
+
+    (when (> 0.005 (rand 1.0))
+      (@gen-goal me))
+    
+    (= @last-time (time))))
+
+; Returns the Ent in the list closest to rel.
+; The first argument should be the position relative to which "closeness" is gauged.
+; The second argument is a list of entities from which to select the "closest"
+(let-fn closest-ent (rel ..ents)
+  (min-by-key
+    (fn1 (.magn2 (.- rel [_ 'pos])))
+    ..ents))
+
+(let-class Inchworm
+  (field heading)
+
+  (init (me)
+    (= [me 'size] (rand 0.7 1.0)
+       [me 'look-toward] (rand-select 'left 'right)
+       @heading (rand-vec2 1.0)))
+
+  ; Newly hatched Inchworms are told to flee,
+  ; this prevents them from immediately eating their brethren
+  (meth on-message (ent (name ..rest))
+    (match name
+      ('flee (@enab! 'Flee ..rest))
+      (other (bail "message unknown to inchworm: " other))))
+
+  ; Inchworms lurch toward their heading
+  (meth update (me)
+    (when (== [me 'anim-frame] 5)
+        (@set-heading me))
+    (= @heading (.* @heading 0.90))
+    (.move me (.* @heading (* 0.003 (+ [me 'size] 0.3)))))
+
+  (fsm
+    ; Inchworms flee immediately after being hatched,
+    ; simply running in a single direction for a short period of time
+    (state Flee
+      (field direction (rand-vec2 1.0))
+      (const duration 7.5)
+      (field start (time))
+
+      (meth set-heading (me)
+        (= @heading @direction))
+
+      (wrap Main:update (me)
+        (when (< @duration (- (time) @start))
+          (@enab! 'Hunt)
+          (@update me)
+          (return))
+        (@base me)))
+
+    (state* Hunt
+      (field worms-eaten 0)
+      ; Where one goes when there is no prey to be chased
+      (field idle-goal)
+
+      (init-state ()
+        (= @idle-goal (rand-select ..(instances-of 'GrassClump))))
+
+      ; Eating one of their brethren stirs a hunger within them that cannot
+      ; be sated. If they don't feed again soon, they implode of starvation
+      ; and their brethren leap from their bowels, renewed
+      (state Hungry
+        (field last-eaten (time))
+
+        (wrap Main:update (me)
+          (when (> (- (time) @last-eaten) 15.0)
+            (let baby-count (+ @worms-eaten 1))
+            (forn (i baby-count)
+              (let baby (spawn-instance 'Inchworm))
+              (= [baby 'pos] (.+ [me 'pos] (rand-vec2 (* i 0.085))))
+              (.message baby '(flee)))
+            (.kill me))
+
+          (@base me)))
+
+      ; One's brethren are immediately consumed upon contact
+      (meth collision (me u)
+        (let u-inchworm (eq? [u 'prefab] 'Inchworm)
+             me-bigger (< [u 'size] [me 'size]))
+        (when (and u-inchworm me-bigger)
+          (when (not (@enab? 'Hungry))
+            (@enab! 'Hungry))
+          (= @last-eaten (time))
+          (inc! @worms-eaten)
+          (inc! [me 'size] (/ [u 'size] 3))
+          (.kill u)))
+
+      ; Chase a smaller Inchworm, if any are to be found
+      (meth set-heading (me)
+        (let prey (->>
+          (instances-of 'Inchworm)
+          (filter (fn1 (< [_ 'size] [me 'size])))))
+        (= @heading (.toward [me 'pos]
+          (match (arr ..prey)
+            ((f ..rest)
+              (let closest-prey (closest-ent [me 'pos] f ..rest))
+              [closest-prey 'pos])
+            (()
+              [@idle-goal 'pos]))))))))
+
+(arr BugWander Inchworm)

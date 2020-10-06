@@ -1,12 +1,13 @@
+#![feature(drain_filter)]
 use macroquad::*;
 
 mod combat;
 mod draw;
 mod phys;
 mod world;
-pub use world::World;
+pub use world::{Game, World};
 
-#[macroquad::main("hackanoir")]
+#[macroquad::main("hexagolm")]
 async fn main() {
     let mut w = World::new().await;
 

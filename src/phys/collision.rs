@@ -1,4 +1,4 @@
-use crate::{phys::PhysHandle, World};
+use crate::{phys::PhysHandle, world, Game};
 use fxhash::FxHashSet;
 use hecs::Entity;
 
@@ -55,7 +55,8 @@ impl std::ops::DerefMut for Contacts {
     }
 }
 
-pub fn collision(world: &mut World) {
+pub fn collision(world: &mut Game) {
+    let mut scripts = glsp::lib_mut::<world::script::Cache>();
     let ecs = &mut world.ecs;
     let phys = &mut world.phys;
 
@@ -76,37 +77,29 @@ pub fn collision(world: &mut World) {
                 .data()
         };
         macro_rules! process_handle_pair {
-            ($a:ident, $b:ident, $for_each:expr) => {
-                let ent_a = ent_from_handle($a);
-                let ent_b = ent_from_handle($b);
+            ($a:ident, $b:ident, $($for_each:tt)*) => {
+                let mut $a = ent_from_handle($a);
+                let mut $b = ent_from_handle($b);
 
-                //std::array::IntoIter::new([(ent_a, ent_b), (ent_b, ent_a)])
-                vec![(ent_a, ent_b), (ent_b, ent_a)]
-                    .into_iter()
-                    .filter_map(|(ent, other_ent)| {
-                        Some((
-                            ecs.get_mut::<Contacts>(ent).ok()?
-                            /*.unwrap_or_else(|e| {
-                                panic!(
-                                    "Entity[{:?}] was collided with but has no Contacts: {}",
-                                    ent, e
-                                )
-                            })*/,
-                            other_ent,
-                        ))
-                    })
-                    .for_each($for_each);
+                $($for_each)*;
+                std::mem::swap(&mut $a, &mut $b);
+                $($for_each)*;
             };
         };
         match event {
-            &ContactEvent::Started(a, b) => {
-                process_handle_pair!(a, b, |(mut contacts, other_ent)| {
-                    contacts.insert(other_ent);
+            &ContactEvent::Started(ent, other_ent) => {
+                process_handle_pair!(ent, other_ent, {
+                    if let Ok(mut contacts) = ecs.get_mut::<Contacts>(ent) {
+                        contacts.insert(other_ent);
+                    }
+                    scripts.new_collisions.push((ent, other_ent));
                 });
             }
-            &ContactEvent::Stopped(a, b) => {
-                process_handle_pair!(a, b, |(mut contacts, other_ent)| {
-                    contacts.remove(&other_ent);
+            &ContactEvent::Stopped(ent, other_ent) => {
+                process_handle_pair!(ent, other_ent, {
+                    if let Ok(mut contacts) = ecs.get_mut::<Contacts>(ent) {
+                        contacts.remove(&other_ent);
+                    }
                 });
             }
         }
@@ -166,15 +159,15 @@ pub fn collision(world: &mut World) {
 }
 
 /// Remove the Collision Objects of dead Entities from the CollisionWorld
-pub fn clear_dead_collision_objects(world: &mut World) {
+pub fn clear_dead_collision_objects(world: &mut Game) {
     let ecs = &world.ecs;
     let phys = &mut world.phys;
 
     phys.remove(
         world
             .dead
-            .iter()
-            .filter_map(|&e| Some(*ecs.get::<PhysHandle>(e).ok()?))
+            .marks()
+            .filter_map(|e| ecs.get::<PhysHandle>(e).ok().as_deref().copied())
             .collect::<Vec<PhysHandle>>()
             .as_slice(),
     );

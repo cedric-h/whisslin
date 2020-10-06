@@ -1,10 +1,19 @@
 {
   "draw_debug": false,
+  "tile": {
+    "size": 0.48,
+    "border_thickness": -0.0122,
+    "border_color": [
+      29,
+      185,
+      88,
+      255
+    ],
+    "art_handle": 4
+  },
   "draw": {
     "zoom": 3.2,
-    "tile_size": 0.48,
     "camera_move": 0.41,
-	"tile_art": 5,
     "art": [
       {
         "file": "golem frames/side_spritesheet.png",
@@ -51,20 +60,46 @@
         }
       },
       {
+        "file": "tiles.png",
+        "scale": 0.0016,
+        "spritesheet": {
+          "rows": 1,
+          "columns": 3,
+          "total": 3,
+          "frame_rate": 1,
+          "hold_at": 0
+        }
+      },
+      {
         "file": "baseball.png",
         "scale": 0.0016,
         "align": "Center"
       },
       {
-        "file": "tiles.png",
-        "scale": 0.0016,
-		"spritesheet": {
-			"rows": 1,
-			"columns": 3,
-			"total": 3,
-			"frame_rate": 1,
-			"hold_at": 0
-		}
+        "file": "target frames/spritesheet.png",
+        "scale": 0.0025,
+        "spritesheet": {
+          "rows": 4,
+          "columns": 4,
+          "total": 15,
+          "frame_rate": 3,
+          "hold_at": 0
+        }
+      },
+      {
+        "file": "vase frames/spritesheet.png",
+        "scale": 0.0025,
+        "spritesheet": {
+          "rows": 4,
+          "columns": 4,
+          "total": 15,
+          "frame_rate": 3,
+          "hold_at": 0
+        }
+      },
+      {
+        "file": "vase.png",
+        "scale": 0.0025
       },
       {
         "file": "slime frames/spritesheet.png",
@@ -76,6 +111,54 @@
           "frame_rate": 3,
           "hold_at": 0
         }
+      },
+      {
+        "file": "atmosphere/butterfly/spritesheet.png",
+        "scale": 0.0034,
+        "spritesheet": {
+          "rows": 3,
+          "columns": 4,
+          "total": 12,
+          "frame_rate": 2,
+          "hold_at": 0
+        }
+      },
+      {
+        "file": "atmosphere/inchworm/spritesheet.png",
+        "scale": 0.0031,
+        "spritesheet": {
+          "rows": 3,
+          "columns": 5,
+          "total": 13,
+          "frame_rate": 3,
+          "hold_at": 0
+        }
+      },
+      {
+        "file": "atmosphere/grass/spritesheet.png",
+        "scale": 0.003,
+        "spritesheet": {
+          "rows": 3,
+          "columns": 5,
+          "total": 13,
+          "frame_rate": 3,
+          "hold_at": 0
+        }
+      },
+      {
+        "file": "atmosphere/bee/spritesheet.png",
+        "scale": 0.0034,
+        "spritesheet": {
+          "rows": 2,
+          "columns": 2,
+          "total": 4,
+          "frame_rate": 2,
+          "hold_at": 0
+        }
+      },
+      {
+        "file": "atmosphere/ruins.png",
+        "scale": 0.0053
       }
     ]
   },
@@ -160,5 +243,359 @@
     },
     "speed": 0.039,
     "stop_decay": 0.92
+  },
+  "prefab": {
+    "instances": [
+      {
+        "value": null,
+        "version": 0
+      },
+      {
+        "value": {
+          "prefab_key": {
+            "idx": 1,
+            "version": 1
+          },
+          "comps": [
+            {
+              "Position": [
+                4.0,
+                0.108
+              ]
+            }
+          ]
+        },
+        "version": 1
+      },
+      {
+        "value": {
+          "prefab_key": {
+            "idx": 2,
+            "version": 1
+          },
+          "comps": [
+            {
+              "Position": [
+                0.0,
+                0.231
+              ]
+            }
+          ]
+        },
+        "version": 3
+      },
+      {
+        "value": {
+          "prefab_key": {
+            "idx": 4,
+            "version": 1
+          },
+          "comps": [
+            {
+              "Position": [
+                0.82173574,
+                0.075
+              ]
+            }
+          ]
+        },
+        "version": 1
+      },
+      {
+        "value": {
+          "prefab_key": {
+            "idx": 3,
+            "version": 1
+          },
+          "comps": [
+            {
+              "Position": [
+                1.216348,
+                1.0183481
+              ]
+            }
+          ]
+        },
+        "version": 1
+      },
+      {
+        "value": {
+          "prefab_key": {
+            "idx": 5,
+            "version": 1
+          },
+          "comps": [
+            {
+              "Position": [
+                0.3112565,
+                1.7683656
+              ]
+            }
+          ]
+        },
+        "version": 1
+      },
+      {
+        "value": {
+          "prefab_key": {
+            "idx": 2,
+            "version": 1
+          },
+          "comps": [
+            {
+              "Position": [
+                -0.3499695,
+                1.6666934
+              ]
+            }
+          ]
+        },
+        "version": 1
+      },
+      {
+        "value": {
+          "prefab_key": {
+            "idx": 2,
+            "version": 1
+          },
+          "comps": [
+            {
+              "Position": [
+                1.3787992,
+                1.8321564
+              ]
+            }
+          ]
+        },
+        "version": 1
+      },
+      {
+        "value": {
+          "prefab_key": {
+            "idx": 4,
+            "version": 1
+          },
+          "comps": [
+            {
+              "Position": [
+                -1.3083838,
+                -0.18581176
+              ]
+            }
+          ]
+        },
+        "version": 1
+      },
+      {
+        "value": {
+          "prefab_key": {
+            "idx": 4,
+            "version": 1
+          },
+          "comps": [
+            {
+              "Position": [
+                -0.49638897,
+                1.9067442
+              ]
+            }
+          ]
+        },
+        "version": 1
+      },
+      {
+        "value": {
+          "prefab_key": {
+            "idx": 6,
+            "version": 1
+          },
+          "comps": [
+            {
+              "Position": [
+                -1.0121692,
+                1.9973309
+              ]
+            }
+          ]
+        },
+        "version": 3
+      }
+    ],
+    "fabs": [
+      {
+        "value": null,
+        "version": 0
+      },
+      {
+        "value": {
+          "name": "Vase",
+          "comps": [
+            {
+              "Art": 8
+            },
+            {
+              "DeathAnimation": 7
+            },
+            {
+              "Health": 1
+            },
+            {
+              "Hitbox": [
+                0.25,
+                0.2
+              ]
+            },
+            {
+              "Collision": {
+                "blacklist": [],
+                "whitelist": [
+                  "Weapon",
+                  "Player",
+                  "World",
+                  "Enemy"
+                ],
+                "membership": [
+                  "World"
+                ]
+              }
+            }
+          ]
+        },
+        "version": 1
+      },
+      {
+        "value": {
+          "name": "GrassClump",
+          "comps": [
+            {
+              "Art": 12
+            },
+            {
+              "Collision": {
+                "blacklist": [],
+                "whitelist": [],
+                "membership": []
+              }
+            },
+            {
+              "Hitbox": [
+                0.613,
+                0.358
+              ]
+            }
+          ]
+        },
+        "version": 1
+      },
+      {
+        "value": {
+          "name": "Bee",
+          "comps": [
+            {
+              "Art": 13
+            },
+            {
+              "Collision": {
+                "blacklist": [],
+                "whitelist": [],
+                "membership": []
+              }
+            },
+            {
+              "Hitbox": [
+                0.196,
+                0.013
+              ]
+            },
+            {
+              "Script": "BugWander"
+            }
+          ]
+        },
+        "version": 1
+      },
+      {
+        "value": {
+          "name": "Inchworm",
+          "comps": [
+            {
+              "Art": 11
+            },
+            {
+              "Collision": {
+                "blacklist": [],
+                "whitelist": [
+                  "Creature"
+                ],
+                "membership": [
+                  "Creature"
+                ]
+              }
+            },
+            {
+              "Hitbox": [
+                0.074,
+                0.074
+              ]
+            },
+            {
+              "Script": "Inchworm"
+            }
+          ]
+        },
+        "version": 1
+      },
+      {
+        "value": {
+          "name": "Butterfly",
+          "comps": [
+            {
+              "Art": 10
+            },
+            {
+              "Collision": {
+                "blacklist": [],
+                "whitelist": [],
+                "membership": []
+              }
+            },
+            {
+              "Hitbox": [
+                0.237,
+                0.03
+              ]
+            },
+            {
+              "Script": "BugWander"
+            }
+          ]
+        },
+        "version": 1
+      },
+      {
+        "value": {
+          "name": "Ruin",
+          "comps": [
+            {
+              "Art": 14
+            },
+            {
+              "Hitbox": [
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "Collision": {
+                "blacklist": [],
+                "whitelist": [],
+                "membership": []
+              }
+            }
+          ]
+        },
+        "version": 1
+      }
+    ]
   }
 }

@@ -43,9 +43,9 @@ impl CedCam2D {
     }
 
     fn scale_matrix(&self) -> glam::Mat4 {
-        let Self { zoom, flip_x, .. } = *self;
+        let Self { zoom, .. } = *self;
         let (w, h) = (screen_width(), screen_height());
-        Mat4::from_scale(vec3(if flip_x { -1.0 } else { 1.0 }, -(w / h), 1.0) / zoom)
+        Mat4::from_scale(vec3(1.0, -(w / h), 1.0) / zoom)
     }
 }
 
@@ -58,6 +58,7 @@ impl Camera for CedCam2D {
                 0.0,
             ))
             * Mat4::from_axis_angle(vec3(0.0, 0.0, 1.0), self.iso.rotation.angle())
+            * Mat4::from_scale(vec3(if self.flip_x { -1.0 } else { 1.0 }, 1.0, 1.0))
     }
 
     fn depth_enabled(&self) -> bool {

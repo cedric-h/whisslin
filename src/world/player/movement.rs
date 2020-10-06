@@ -1,7 +1,7 @@
 use super::Direction;
 use crate::{
     draw::{AnimationFrame, Looks},
-    World,
+    Game,
 };
 use macroquad::{is_key_down, KeyCode};
 
@@ -20,13 +20,13 @@ impl Default for WalkAnimator {
 }
 
 pub fn movement(
-    World {
+    Game {
         phys,
         ecs,
         player,
         config,
         ..
-    }: &mut World,
+    }: &mut Game,
 ) -> Option<()> {
     let mut query = ecs
         .query_one::<(&mut AnimationFrame, &mut Looks)>(player.entity)

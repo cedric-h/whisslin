@@ -5,7 +5,7 @@ pub use movement::movement;
 
 use crate::{
     combat, draw,
-    phys::{self, collide, CollisionGroups, Cuboid, PhysHandle},
+    phys::{self, Collide, CollisionGroups, Cuboid, PhysHandle},
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -110,8 +110,8 @@ impl Player {
             },
             phys::KnockBack {
                 groups: CollisionGroups::new()
-                    .with_membership(&[collide::WEAPON])
-                    .with_whitelist(&[collide::ENEMY]),
+                    .with_membership(&[Collide::Weapon as usize])
+                    .with_whitelist(&[Collide::Enemy as usize]),
                 force_decay: 0.75,
                 force_magnitude: 0.75,
                 use_force_direction: true,
@@ -134,7 +134,7 @@ impl Player {
                 ent,
                 na::Isometry::identity(),
                 Cuboid::new(na::Vector2::new(0.6, 0.15) / 2.0),
-                CollisionGroups::new().with_membership(&[phys::collide::PLAYER]),
+                CollisionGroups::new().with_membership(&[phys::Collide::Player as usize]),
             ),
             weapon_entity: Some(wep_ent),
             wielder: aiming::Wielder::new(),

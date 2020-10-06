@@ -1,7 +1,10 @@
-use crate::{phys::PhysHandle, world, World};
+use crate::{
+    phys::{self, PhysHandle},
+    world, Game,
+};
 use macroquad::{drawing::Texture2D, *};
-use std::{fmt, num::NonZeroUsize};
 use ncollide2d::shape::Cuboid;
+use std::{fmt, num::NonZeroUsize};
 
 const ONE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(1) };
 mod cam;
@@ -11,10 +14,14 @@ pub use cam::CedCam2D;
 #[serde(deny_unknown_fields)]
 pub struct Config {
     pub zoom: f32,
-    pub tile_size: f32,
     pub camera_move: f32,
-	pub tile_art: ArtHandle,
     pub art: Vec<ArtConfig>,
+    #[cfg(feature = "confui")]
+    #[serde(skip)]
+    art_search: String,
+    #[cfg(feature = "confui")]
+    #[serde(skip)]
+    popup: Popup,
 }
 impl Config {
     pub fn art(&self, file: &str) -> ArtHandle {
@@ -28,18 +35,73 @@ impl Config {
 
     #[cfg(feature = "confui")]
     pub fn dev_ui(&mut self, ui: &mut egui::Ui) {
-        ui.label("zoom");
-        ui.add(egui::DragValue::f32(&mut self.zoom).speed(0.005));
-        ui.label("tile size");
-        ui.add(egui::DragValue::f32(&mut self.tile_size).speed(0.005));
-        ui.label("camera move");
-        ui.add(egui::DragValue::f32(&mut self.camera_move).speed(0.01));
+        match &mut self.popup {
+            Popup::Clear => {
+                ui.label("zoom");
+                ui.add(egui::DragValue::f32(&mut self.zoom).speed(0.001));
 
-        ui.collapsing("Art", |ui| {
-            for art in self.art.iter_mut() {
-                ui.collapsing(&art.file.clone(), |ui| art.dev_ui(ui));
+                ui.label("camera move");
+                ui.add(egui::DragValue::f32(&mut self.camera_move).speed(0.01));
+
+                ui.collapsing("Art", |ui| {
+                    let mut removal_index: Option<usize> = None;
+                    for (i, art) in self.art.iter_mut().enumerate() {
+                        use ArtConfigDevUiRequest::*;
+                        ui.collapsing(&art.file.clone(), |ui| match art.dev_ui(ui) {
+                            Remove => removal_index = Some(i),
+                            NoRequest => {}
+                        });
+                    }
+                    if let Some(i) = removal_index {
+                        self.art.remove(i);
+                    }
+
+                    if ui.button("Add Art").clicked {
+                        self.popup = Popup::AddArt {
+                            file: "vase.png".to_string(),
+                        };
+                    }
+                });
             }
-        });
+            Popup::AddArt { file } => {
+                ui.label("Image File for new Art");
+                ui.add(egui::TextEdit::new(file));
+
+                if std::path::Path::new("art/").join(&mut *file).exists() {
+                    if ui.button("Add Art").clicked {
+                        self.art.push(ArtConfig {
+                            file: std::mem::take(file),
+                            scale: self.art.first().map(|a| a.scale).unwrap_or(1.0),
+                            spritesheet: None,
+                            align: Default::default(),
+                        });
+                    }
+                } else {
+                    ui.add(
+                        egui::Label::new(format!("./art/{} does not exist", file))
+                            .text_color(egui::color::RED),
+                    );
+                }
+
+                if ui.button("Back").clicked {
+                    self.popup = Popup::Clear;
+                }
+            }
+        }
+    }
+
+    #[cfg(feature = "confui")]
+    /// Returns `true` if "dirty" i.e. meaningful outward-facing changes to the data occured.
+    pub fn select_handle_dev_ui(&mut self, ui: &mut egui::Ui, current: &mut ArtHandle) -> bool {
+        ui.label("Art Search");
+        ui.add(egui::TextEdit::new(&mut self.art_search));
+
+        self.art
+            .iter()
+            .enumerate()
+            .map(|(i, art)| (ArtHandle(i), &art.file))
+            .filter(|(_, f)| f.starts_with(&self.art_search))
+            .any(|(ah, art)| ui.radio_value(art, current, ah).clicked)
     }
 
     pub fn get(&self, art: ArtHandle) -> &ArtConfig {
@@ -64,8 +126,31 @@ impl Config {
     }
 }
 
-#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
+/// A state machine modelling who has control of the Config window
+#[cfg(feature = "confui")]
+enum Popup {
+    AddArt {
+        file: String,
+    },
+    /// No popups!
+    Clear,
+}
+#[cfg(feature = "confui")]
+impl Default for Popup {
+    fn default() -> Self {
+        Popup::Clear
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
 pub struct ArtHandle(usize);
+
+impl ArtHandle {
+    pub const unsafe fn new_unchecked(u: usize) -> Self {
+        ArtHandle(u)
+    }
+}
 
 impl fmt::Display for ArtHandle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -115,7 +200,7 @@ impl Images {
 pub struct AnimationFrame(pub usize);
 impl AnimationFrame {
     pub fn current_frame(self, ss: Spritesheet) -> usize {
-        self.0 / ss.frame_rate as usize % ss.total.get()
+        self.0 / ss.frame_rate.get() % ss.total.get()
     }
 
     pub fn at_holding_frame(self, ss: Spritesheet) -> bool {
@@ -123,7 +208,7 @@ impl AnimationFrame {
     }
 }
 
-pub fn animate(World { ecs, .. }: &mut World) {
+pub fn animate(Game { ecs, .. }: &mut Game) {
     for (_, AnimationFrame(af)) in ecs.query::<&mut AnimationFrame>().iter() {
         *af += 1;
     }
@@ -141,7 +226,7 @@ pub struct ArtConfig {
 }
 impl ArtConfig {
     #[cfg(feature = "confui")]
-    fn dev_ui(&mut self, ui: &mut egui::Ui) {
+    fn dev_ui(&mut self, ui: &mut egui::Ui) -> ArtConfigDevUiRequest {
         ui.label("file name");
         ui.add(egui::TextEdit::new(&mut self.file));
 
@@ -158,7 +243,22 @@ impl ArtConfig {
                 (false, None) => {}
             }
         });
+
+        if ui.button("Remove").clicked {
+            return ArtConfigDevUiRequest::Remove;
+        }
+
+        ArtConfigDevUiRequest::NoRequest
     }
+}
+#[cfg(feature = "confui")]
+/// ArtConfig's dev_ui method uses this to request that things outside of
+/// the purview of a single ArtConfig are manipulated.
+enum ArtConfigDevUiRequest {
+    /// Remove this ArtConfig from the Config.
+    Remove,
+    /// No change necessary.
+    NoRequest,
 }
 
 #[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
@@ -184,7 +284,7 @@ pub struct Spritesheet {
     pub rows: NonZeroUsize,
     pub columns: NonZeroUsize,
     pub total: NonZeroUsize,
-    pub frame_rate: usize,
+    pub frame_rate: NonZeroUsize,
     pub hold_at: usize,
 }
 impl Default for Spritesheet {
@@ -193,19 +293,19 @@ impl Default for Spritesheet {
             rows: ONE,
             columns: ONE,
             total: ONE,
-            frame_rate: 1,
+            frame_rate: ONE,
             hold_at: 0,
         }
     }
 }
 impl Spritesheet {
-	/// Coords are in terms of tiles, not pixels.
-	/// Multiply by tile texture size for pixel coords.
-	fn coords(self, af: usize) -> glam::Vec2 {
-		let row = af / self.columns.get();
-		let column = af % self.columns.get();
-		vec2(column as f32, row as f32)
-	}
+    /// Coords are in terms of tiles, not pixels.
+    /// Multiply by tile texture size for pixel coords.
+    fn coords(self, af: usize) -> glam::Vec2 {
+        let row = af / self.columns.get();
+        let column = af % self.columns.get();
+        vec2(column as f32, row as f32)
+    }
 
     #[cfg(feature = "confui")]
     fn dev_ui(&mut self, ui: &mut egui::Ui) {
@@ -219,6 +319,7 @@ impl Spritesheet {
         non_zero_drag("rows", &mut self.rows);
         non_zero_drag("columns", &mut self.columns);
         non_zero_drag("total", &mut self.total);
+        non_zero_drag("frame rate", &mut self.frame_rate);
 
         let mut usize_drag = |label: &'static str, u: &mut usize| {
             ui.label(label);
@@ -227,7 +328,6 @@ impl Spritesheet {
             ui.add(egui::DragValue::f32(&mut f));
             *u = f as usize
         };
-        usize_drag("frame rate", &mut self.frame_rate);
         usize_drag("hold at", &mut self.hold_at);
     }
 }
@@ -252,14 +352,90 @@ impl Looks {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+/// A Component that animates an entity's death, should it die.
+pub struct DeathAnimation {
+    art: ArtHandle,
+}
+impl DeathAnimation {
+    pub fn new(art: ArtHandle) -> Self {
+        Self { art }
+    }
+}
+
+/// A Component that is active on Ghost entities as they animate a death.
+/// The bool should start out as false and be set to true if the animation has begun playing.
+pub struct AnimatingDeath(bool);
+
+/// Ghost entities are spawned to play death animations.
+pub fn insert_ghosts(
+    Game {
+        phys,
+        l8r,
+        ecs,
+        dead,
+        ..
+    }: &mut Game,
+) {
+    for (death_anim, iso, half_extents) in dead.marks().filter_map(
+        |e| -> Option<(DeathAnimation, na::Isometry2<f32>, na::Vector2<f32>)> {
+            let (&death_anim, &h) = ecs.query_one::<(&_, &_)>(e).ok()?.get()?;
+            let obj = phys.collision_object(h)?;
+            let Cuboid { half_extents, .. } = obj.shape().as_shape()?;
+            Some((death_anim, *obj.position(), *half_extents))
+        },
+    ) {
+        l8r.l8r(move |Game { ecs, phys, .. }| {
+            let ghost = ecs.spawn((
+                Looks::art(death_anim.art),
+                AnimationFrame(0),
+                AnimatingDeath(false),
+            ));
+            phys::phys_insert(
+                ecs,
+                phys,
+                ghost,
+                iso,
+                Cuboid::new(half_extents),
+                phys::CollisionGroups::new().with_whitelist(&[]),
+            );
+        });
+    }
+}
+
+/// Once ghosts play their death animations, they have no reason to exist.
+pub fn clear_ghosts(
+    Game {
+        ecs, config, dead, ..
+    }: &mut Game,
+) {
+    for (e, (AnimatingDeath(started), af, looks)) in
+        ecs.query::<(&mut _, &AnimationFrame, &Looks)>().iter()
+    {
+        let ss = config.draw.get(looks.art).spritesheet.unwrap();
+        let cf = af.current_frame(ss);
+
+        match cf {
+            1 => *started = true,
+            0 if *started => dead.mark(e),
+            _ => {}
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct DrawState {
     sprites: Vec<SpriteData>,
 }
-type SpriteData = (Looks, na::Isometry2<f32>, na::Vector2<f32>, Option<AnimationFrame>);
+type SpriteData = (
+    Looks,
+    na::Isometry2<f32>,
+    na::Vector2<f32>,
+    Option<AnimationFrame>,
+);
 
 pub fn draw(
-    World {
+    Game {
         phys,
         ecs,
         config,
@@ -268,7 +444,7 @@ pub fn draw(
         images,
         draw_state,
         ..
-    }: &mut World,
+    }: &mut Game,
 ) {
     clear_background(Color([23, 138, 75, 255]));
 
@@ -284,29 +460,31 @@ pub fn draw(
 
     let camera = config.draw.camera(player_iso_inverse);
     set_camera(camera);
-	let tile_image = images.get(config.draw.tile_art);
-	let tile_ss = config.draw.get(config.draw.tile_art).spritesheet.unwrap();
-	let tile_image_size = {
-		let size = vec2(tile_image.width(), tile_image.height());
-		size / vec2(tile_ss.columns.get() as f32, tile_ss.rows.get() as f32)
-	};
+    let tile_image = images.get(config.tile.art_handle);
+    let tile_ss = config.draw.get(config.tile.art_handle).spritesheet.unwrap();
+    let tile_image_size = {
+        let size = vec2(tile_image.width(), tile_image.height());
+        size / vec2(tile_ss.columns.get() as f32, tile_ss.rows.get() as f32)
+    };
+
+    // draw the tile images
     for tile in map.tiles.iter() {
         draw_texture_ex(
             *tile_image,
-            tile.translation.x,
-            tile.translation.y,
+            tile.translation.x(),
+            tile.translation.y(),
             WHITE,
             DrawTextureParams {
-                dest_size: Some(vec2(1.02, 1.085) * 2.0 * config.draw.tile_size),
-				source: {
-					let coords = tile_ss.coords(tile.spritesheet_index) * tile_image_size;
+                dest_size: Some(Vec2::one() * config.tile.size * 2.0),
+                source: {
+                    let coords = tile_ss.coords(tile.spritesheet_index) * tile_image_size;
                     Some(Rect {
                         x: coords.x(),
                         y: coords.y(),
                         w: tile_image_size.x(),
                         h: tile_image_size.y(),
                     })
-				},
+                },
                 ..Default::default()
             },
         )
@@ -357,7 +535,7 @@ pub fn draw(
             DrawTextureParams {
                 dest_size: Some(world_size),
                 source: art.spritesheet.and_then(|ss| {
-					let coords = ss.coords(anim_frame?.current_frame(ss)) * size;
+                    let coords = ss.coords(anim_frame?.current_frame(ss)) * size;
                     Some(Rect {
                         x: coords.x(),
                         y: coords.y(),
@@ -370,24 +548,18 @@ pub fn draw(
         )
     }
 
-	#[cfg(feature = "confui")]
+    #[cfg(feature = "confui")]
     if config.draw_debug {
         for obj in ecs
             .query::<&PhysHandle>()
             .iter()
             .filter_map(|(_, &h)| phys.collision_object(h))
         {
-            let half = obj
-                .shape()
-                .as_shape::<Cuboid<f32>>()
-                .unwrap()
-                .half_extents;
+            let half = obj.shape().as_shape::<Cuboid<f32>>().unwrap().half_extents;
             let size = half * 2.0;
             let pos = -half;
 
-            let camera = config
-                .draw
-                .camera(player_iso_inverse * obj.position());
+            let camera = config.draw.camera(player_iso_inverse * obj.position());
             set_camera(camera);
 
             draw_rectangle_lines(pos.x, pos.y, size.x, size.y, 0.01, RED);

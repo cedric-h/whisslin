@@ -1,7 +1,7 @@
 use crate::{
     draw,
     phys::{self, PhysHandle},
-    world, World,
+    world, Game,
 };
 use macroquad::*;
 
@@ -174,16 +174,16 @@ impl Wielder {
 
 fn weapon_hitbox_groups() -> phys::CollisionGroups {
     phys::CollisionGroups::new()
-        .with_membership(&[phys::collide::WEAPON])
-        .with_whitelist(&[
-            phys::collide::WORLD,
-            phys::collide::ENEMY,
-        ])
+        .with_membership(&[phys::Collide::Weapon as usize])
+        .with_whitelist(&[phys::Collide::World as usize, phys::Collide::Enemy as usize])
 }
 fn weapon_prelaunch_groups() -> phys::CollisionGroups {
     phys::CollisionGroups::new()
-        .with_membership(&[phys::collide::WEAPON])
-        .with_blacklist(&[phys::collide::PLAYER, phys::collide::ENEMY])
+        .with_membership(&[phys::Collide::Weapon as usize])
+        .with_blacklist(&[
+            phys::Collide::Player as usize,
+            phys::Collide::Enemy as usize,
+        ])
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -376,15 +376,17 @@ impl WeaponConfig {
 // if clicking, queues adding velocity to the weapon and unequips it.
 // if the weapon that's been equipped doesn't have an iso, queue adding one
 pub fn aiming(
-    World {
+    Game {
         ecs,
         l8r,
         phys,
         config:
             world::Config {
+                #[cfg(feature = "confui")]
                 draw_debug,
                 player: world::player::Config { weapon, .. },
                 draw: draw_config,
+                ..
             },
         player:
             world::Player {
@@ -397,7 +399,7 @@ pub fn aiming(
                 ..
             },
         ..
-    }: &mut World,
+    }: &mut Game,
 ) -> Option<()> {
     let wielder_iso = phys.collision_object(*wielder_h)?.position();
     let wielder_flipped = ecs.get::<draw::Looks>(*wielder_ent).ok()?.flip_x;
@@ -429,7 +431,7 @@ pub fn aiming(
     let mouse_down = is_mouse_button_down(MouseButton::Left);
 
     let readying_animation_length = match draw_config.get(weapon.animation_art).spritesheet {
-        Some(ss) => (ss.total.get() * ss.frame_rate) as u16 - 2,
+        Some(ss) => (ss.total.get() * ss.frame_rate.get()) as u16 - 2,
         None => 10,
     };
 

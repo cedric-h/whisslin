@@ -1,3 +1,5 @@
+use crate::Game;
+
 /// A measure of hit points.
 ///
 /// Symbolically represents how close something is to dying.
@@ -154,12 +156,10 @@ fn health_misc() {
 }
 
 /// Gives things with 0 health the Dead component.
-pub fn remove_out_of_health(world: &mut crate::World) {
-    let ecs = &world.ecs;
-
+pub fn remove_out_of_health(Game { ecs, dead, .. }: &mut Game) {
     for (ent, &health) in ecs.query::<&Health>().iter() {
         if health.is_dead() {
-            world.dead.push(ent);
+            dead.mark(ent);
         }
     }
 }

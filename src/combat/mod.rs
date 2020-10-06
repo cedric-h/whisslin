@@ -82,7 +82,7 @@ impl HurtfulKind {
     }
 }
 
-pub fn hurtful_damage(world: &mut crate::World) {
+pub fn hurtful_damage(world: &mut crate::Game) {
     use crate::phys;
     use crate::phys::collision;
 

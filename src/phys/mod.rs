@@ -4,16 +4,144 @@ pub type CollisionWorld = ncollide2d::world::CollisionWorld<f32, hecs::Entity>;
 pub type PhysHandle = ncollide2d::pipeline::CollisionObjectSlabHandle;
 pub use ncollide2d::{pipeline::CollisionGroups, shape::Cuboid};
 
-use crate::World;
+use crate::Game;
 
 /// Collision Group Constants
-pub mod collide {
-    pub const PLAYER: usize = 1;
-    pub const WEAPON: usize = 2;
-    pub const ENEMY: usize = 3;
-
+#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[repr(u32)]
+pub enum Collide {
+    Player,
+    Weapon,
+    Enemy,
     /// Fences, Terrain, etc.
-    pub const WORLD: usize = 5;
+    World,
+    Creature,
+}
+#[cfg(feature = "confui")]
+const ALL_COLLIDE: &[Collide] = {
+    use Collide::*;
+    &[Player, Weapon, Enemy, World, Creature]
+};
+
+/// A collision relationship :P
+#[derive(serde::Deserialize, serde::Serialize, Default, Clone, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct Collisionship {
+    #[serde(default)]
+    blacklist: std::collections::HashSet<Collide>,
+    #[cfg(feature = "confui")]
+    #[serde(skip)]
+    adding_blacklist: Option<Collide>,
+    #[serde(default)]
+    whitelist: std::collections::HashSet<Collide>,
+    #[cfg(feature = "confui")]
+    #[serde(skip)]
+    adding_whitelist: Option<Collide>,
+    #[serde(default)]
+    membership: std::collections::HashSet<Collide>,
+    #[cfg(feature = "confui")]
+    #[serde(skip)]
+    adding_membership: Option<Collide>,
+}
+#[cfg(feature = "confui")]
+impl Collisionship {
+    /// Returns `true` if "dirty" i.e. meaningful outward-facing changes to the data occured.
+    pub fn dev_ui(&mut self, ui: &mut egui::Ui) -> bool {
+        fn list_edit(
+            ui: &mut egui::Ui,
+            title: &str,
+            adding: &mut Option<Collide>,
+            list: &mut std::collections::HashSet<Collide>,
+        ) -> bool {
+            let mut dirty = false;
+            ui.collapsing(title, |ui| {
+                *adding = adding.take().and_then(|mut to_add| {
+                    for collide in ALL_COLLIDE.iter() {
+                        ui.radio_value(format!("{:?}", collide), &mut to_add, *collide);
+                    }
+                    if ui.button("Add").clicked {
+                        dirty = true;
+                        list.insert(to_add);
+                        None
+                    } else if ui.button("Back").clicked {
+                        None
+                    } else {
+                        Some(to_add)
+                    }
+                });
+                if adding.is_none() {
+                    let mut to_remove: Option<Collide> = None;
+                    for collide in list.iter() {
+                        ui.horizontal(|ui| {
+                            ui.label(format!("{:?}", collide));
+                            if ui.button("Remove").clicked {
+                                to_remove = Some(collide.clone());
+                            }
+                        });
+                    }
+                    if ui.button("Add").clicked {
+                        *adding = Some(Collide::World);
+                    }
+                    if let Some(c) = to_remove {
+                        dirty = true;
+                        list.remove(&c);
+                    }
+                }
+            });
+
+            dirty
+        }
+        list_edit(
+            ui,
+            "Membership",
+            &mut self.adding_membership,
+            &mut self.membership,
+        ) && list_edit(
+            ui,
+            "Whitelist",
+            &mut self.adding_whitelist,
+            &mut self.whitelist,
+        ) && list_edit(
+            ui,
+            "Blacklist",
+            &mut self.adding_blacklist,
+            &mut self.blacklist,
+        )
+    }
+}
+impl Into<CollisionGroups> for Collisionship {
+    fn into(self) -> CollisionGroups {
+        let Self {
+            blacklist,
+            whitelist,
+            membership,
+            ..
+        } = self;
+        let m = |l: std::collections::HashSet<Collide>| {
+            l.into_iter().map(|c| c as usize).collect::<Vec<_>>()
+        };
+        CollisionGroups::new()
+            .with_membership(&m(membership))
+            .with_whitelist(&m(whitelist))
+            .with_blacklist(&m(blacklist))
+    }
+}
+
+pub fn phys_components(
+    phys: &mut CollisionWorld,
+    entity: hecs::Entity,
+    iso: na::Isometry2<f32>,
+    cuboid: Cuboid<f32>,
+    groups: CollisionGroups,
+) -> (collision::Contacts, PhysHandle) {
+    let (h, _) = phys.add(
+        iso,
+        ncollide2d::shape::ShapeHandle::new(cuboid),
+        groups,
+        ncollide2d::pipeline::GeometricQueryType::Contacts(0.0, 0.0),
+        entity,
+    );
+    (collision::Contacts::new(), h)
 }
 
 pub fn phys_insert(
@@ -24,27 +152,13 @@ pub fn phys_insert(
     cuboid: Cuboid<f32>,
     groups: CollisionGroups,
 ) -> PhysHandle {
-    let (h, _) = phys.add(
-        iso,
-        ncollide2d::shape::ShapeHandle::new(cuboid),
-        groups,
-        ncollide2d::pipeline::GeometricQueryType::Contacts(0.0, 0.0),
-        entity,
-    );
-    ecs.insert_one(entity, collision::Contacts::new())
-        .unwrap_or_else(|e| {
-            panic!(
-                "Couldn't insert Contacts for Entity[{:?}] when adding hitbox: {}",
-                entity, e
-            )
-        });
-    ecs.insert_one(entity, h).unwrap_or_else(|e| {
+    let (contacts, h) = phys_components(phys, entity, iso, cuboid, groups);
+    ecs.insert(entity, (contacts, h)).unwrap_or_else(|e| {
         panic!(
-            "Couldn't insert PhysHandle[{:?}] for Entity[{:?}] to add hitbox: {}",
+            "Couldn't insert Contacts or PhysHandle[{:?}] for Entity[{:?}] when adding hitbox: {}",
             h, entity, e
         )
     });
-
     h
 }
 
@@ -233,7 +347,7 @@ fn drag_goal(
 pub struct Velocity(na::Vector2<f32>);
 
 /// Also applies Forces and KnockBack.
-pub fn velocity(world: &mut World) {
+pub fn velocity(world: &mut Game) {
     let ecs = &world.ecs;
     let l8r = &mut world.l8r;
     let phys = &mut world.phys;
@@ -342,7 +456,7 @@ pub fn velocity(world: &mut World) {
 }
 
 /// Note: Also does the calculations for LurchChase, LookChase, and Charge
-pub fn chase(world: &mut World) {
+pub fn chase(world: &mut Game) {
     let ecs = &world.ecs;
     let l8r = &mut world.l8r;
     let phys = &mut world.phys;
