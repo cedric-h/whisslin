@@ -27,6 +27,7 @@ const ALL_COLLIDE: &[Collide] = {
 #[derive(serde::Deserialize, serde::Serialize, Default, Clone, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Collisionship {
+    collision_static: Option<collision::CollisionStatic>,
     #[serde(default)]
     blacklist: std::collections::HashSet<Collide>,
     #[cfg(feature = "confui")]
@@ -47,20 +48,32 @@ pub struct Collisionship {
 impl Collisionship {
     /// Returns `true` if "dirty" i.e. meaningful outward-facing changes to the data occured.
     pub fn dev_ui(&mut self, ui: &mut egui::Ui) -> bool {
+        let mut dirty = false;
+
+        let mut stat = self.collision_static.is_some();
+        if ui.checkbox("Immovable", &mut stat).clicked {
+            self.collision_static = if stat {
+                Some(collision::CollisionStatic)
+            } else {
+                None
+            };
+            dirty = true;
+        }
+
         fn list_edit(
             ui: &mut egui::Ui,
             title: &str,
             adding: &mut Option<Collide>,
             list: &mut std::collections::HashSet<Collide>,
-        ) -> bool {
-            let mut dirty = false;
+            dirty: &mut bool,
+        ) {
             ui.collapsing(title, |ui| {
                 *adding = adding.take().and_then(|mut to_add| {
                     for collide in ALL_COLLIDE.iter() {
                         ui.radio_value(format!("{:?}", collide), &mut to_add, *collide);
                     }
                     if ui.button("Add").clicked {
-                        dirty = true;
+                        *dirty = true;
                         list.insert(to_add);
                         None
                     } else if ui.button("Back").clicked {
@@ -83,34 +96,21 @@ impl Collisionship {
                         *adding = Some(Collide::World);
                     }
                     if let Some(c) = to_remove {
-                        dirty = true;
+                        *dirty = true;
                         list.remove(&c);
                     }
                 }
             });
-
-            dirty
         }
-        list_edit(
-            ui,
-            "Membership",
-            &mut self.adding_membership,
-            &mut self.membership,
-        ) && list_edit(
-            ui,
-            "Whitelist",
-            &mut self.adding_whitelist,
-            &mut self.whitelist,
-        ) && list_edit(
-            ui,
-            "Blacklist",
-            &mut self.adding_blacklist,
-            &mut self.blacklist,
-        )
+        list_edit(ui, "Membership", &mut self.adding_membership, &mut self.membership, &mut dirty); 
+        list_edit(ui, "Whitelist", &mut self.adding_whitelist, &mut self.whitelist, &mut dirty);
+        list_edit(ui, "Blacklist", &mut self.adding_blacklist, &mut self.blacklist, &mut dirty);
+
+        dirty
     }
 }
-impl Into<CollisionGroups> for Collisionship {
-    fn into(self) -> CollisionGroups {
+impl Into<(Option<collision::CollisionStatic>, CollisionGroups)> for Collisionship {
+    fn into(self) -> (Option<collision::CollisionStatic>, CollisionGroups) {
         let Self {
             blacklist,
             whitelist,
@@ -120,10 +120,13 @@ impl Into<CollisionGroups> for Collisionship {
         let m = |l: std::collections::HashSet<Collide>| {
             l.into_iter().map(|c| c as usize).collect::<Vec<_>>()
         };
-        CollisionGroups::new()
-            .with_membership(&m(membership))
-            .with_whitelist(&m(whitelist))
-            .with_blacklist(&m(blacklist))
+        (
+            self.collision_static,
+            CollisionGroups::new()
+                .with_membership(&m(membership))
+                .with_whitelist(&m(whitelist))
+                .with_blacklist(&m(blacklist)),
+        )
     }
 }
 

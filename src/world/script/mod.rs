@@ -330,9 +330,11 @@ impl Ent {
         let (af, looks) = q
             .get()
             .ok_or_else(|| error!("Couldn't get this Ent's looks and/or animation frame"))?;
-        let ss = config.draw.get(looks.art).spritesheet.ok_or_else(|| {
-            error!("This Ent isn't animated (no spritesheet)")
-        })?;
+        let ss = config
+            .draw
+            .get(looks.art)
+            .spritesheet
+            .ok_or_else(|| error!("This Ent isn't animated (no spritesheet)"))?;
 
         Ok(af.current_frame(ss))
     }

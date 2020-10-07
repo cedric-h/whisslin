@@ -1,0 +1,1108 @@
+(
+    draw_debug: false,
+    tile: (
+        size: 0.48,
+        border_thickness: -0.0122,
+        border_color: (29, 185, 88, 255),
+        tiles: {
+            (0, 0): (),
+            (3, -2): (),
+            (-1, 0): (),
+            (3, 4): (),
+            (1, 1): (),
+            (2, -1): (),
+            (2, 2): (),
+            (-2, 6): (),
+            (2, 4): (),
+            (4, 5): (),
+            (0, 1): (),
+            (-1, 1): (),
+            (3, 5): (),
+            (-3, 6): (),
+            (1, -3): (),
+            (2, 3): (),
+            (2, 5): (),
+            (0, 8): (),
+            (0, 2): (),
+            (-5, 13): (),
+            (-1, 10): (),
+            (1, 7): (),
+            (-3, 11): (),
+            (-2, 2): (),
+            (2, 6): (),
+            (0, 9): (),
+            (3, -3): (),
+            (0, 3): (),
+            (3, 3): (),
+            (1, 4): (),
+            (1, 2): (),
+            (1, 8): (),
+            (-3, 4): (),
+            (2, 7): (),
+            (-4, 12): (),
+            (-2, 3): (),
+            (0, 4): (),
+            (0, -2): (),
+            (-1, 4): (),
+            (-1, 2): (),
+            (3, 6): (),
+            (1, 5): (),
+            (1, 3): (),
+            (2, -3): (),
+            (-3, 5): (),
+            (-2, 10): (),
+            (1, -2): (),
+            (2, 0): (),
+            (-4, 13): (),
+            (4, 3): (),
+            (-6, 15): (),
+            (-1, -1): (),
+            (-2, 4): (),
+            (0, -1): (),
+            (-5, 14): (),
+            (-1, 3): (),
+            (-1, 5): (),
+            (-1, 9): (),
+            (0, 5): (),
+            (1, 0): (),
+            (2, -2): (),
+            (-3, 12): (),
+            (-2, 11): (),
+            (1, -1): (),
+            (2, 1): (),
+            (-2, 5): (),
+            (4, 4): (),
+            (-6, 14): (),
+        },
+        art_handle: 4,
+    ),
+    draw: (
+        zoom: 3.2,
+        camera_move: 0.41,
+        art: [
+            (
+                file: "golem frames/side_spritesheet.png",
+                scale: 0.0025,
+                spritesheet: Some((
+                    rows: 3,
+                    columns: 4,
+                    total: 12,
+                    frame_rate: 2,
+                    hold_at: 3,
+                )),
+            ),
+            (
+                file: "golem frames/down_spritesheet.png",
+                scale: 0.0025,
+                spritesheet: Some((
+                    rows: 3,
+                    columns: 4,
+                    total: 12,
+                    frame_rate: 2,
+                    hold_at: 3,
+                )),
+            ),
+            (
+                file: "golem frames/up_spritesheet.png",
+                scale: 0.0025,
+                spritesheet: Some((
+                    rows: 3,
+                    columns: 4,
+                    total: 12,
+                    frame_rate: 2,
+                    hold_at: 3,
+                )),
+            ),
+            (
+                file: "golem frames/weapon_ready_spritesheet.png",
+                scale: 0.0025,
+                spritesheet: Some((
+                    rows: 3,
+                    columns: 5,
+                    total: 13,
+                    frame_rate: 3,
+                    hold_at: 12,
+                )),
+            ),
+            (
+                file: "tiles.png",
+                scale: 0.0016,
+                spritesheet: Some((
+                    rows: 1,
+                    columns: 3,
+                    total: 3,
+                    frame_rate: 1,
+                    hold_at: 0,
+                )),
+            ),
+            (
+                file: "baseball.png",
+                scale: 0.0016,
+                align: Center,
+            ),
+            (
+                file: "target frames/spritesheet.png",
+                scale: 0.0025,
+                spritesheet: Some((
+                    rows: 4,
+                    columns: 4,
+                    total: 15,
+                    frame_rate: 3,
+                    hold_at: 0,
+                )),
+            ),
+            (
+                file: "vase frames/spritesheet.png",
+                scale: 0.0025,
+                spritesheet: Some((
+                    rows: 4,
+                    columns: 4,
+                    total: 15,
+                    frame_rate: 3,
+                    hold_at: 0,
+                )),
+            ),
+            (
+                file: "vase.png",
+                scale: 0.0025,
+            ),
+            (
+                file: "slime frames/spritesheet.png",
+                scale: 0.0025,
+                spritesheet: Some((
+                    rows: 4,
+                    columns: 5,
+                    total: 19,
+                    frame_rate: 3,
+                    hold_at: 0,
+                )),
+            ),
+            (
+                file: "atmosphere/butterfly/spritesheet.png",
+                scale: 0.0034,
+                spritesheet: Some((
+                    rows: 3,
+                    columns: 4,
+                    total: 12,
+                    frame_rate: 2,
+                    hold_at: 0,
+                )),
+            ),
+            (
+                file: "atmosphere/inchworm/spritesheet.png",
+                scale: 0.0031,
+                spritesheet: Some((
+                    rows: 3,
+                    columns: 5,
+                    total: 13,
+                    frame_rate: 3,
+                    hold_at: 0,
+                )),
+            ),
+            (
+                file: "atmosphere/grass/spritesheet.png",
+                scale: 0.003,
+                spritesheet: Some((
+                    rows: 3,
+                    columns: 5,
+                    total: 13,
+                    frame_rate: 3,
+                    hold_at: 0,
+                )),
+            ),
+            (
+                file: "atmosphere/bee/spritesheet.png",
+                scale: 0.0034,
+                spritesheet: Some((
+                    rows: 2,
+                    columns: 2,
+                    total: 4,
+                    frame_rate: 2,
+                    hold_at: 0,
+                )),
+            ),
+            (
+                file: "atmosphere/ruins.png",
+                scale: 0.0031,
+            ),
+            (
+                file: "atmosphere/stump.png",
+                scale: 0.0036,
+            ),
+        ],
+    ),
+    player: (
+        directions: (
+            up: (
+                art: 2,
+                weapon_in_front: false,
+            ),
+            side: (
+                art: 0,
+                weapon_in_front: true,
+            ),
+            down: (
+                art: 1,
+                weapon_in_front: true,
+            ),
+        ),
+        weapon: (
+            offset: [
+                -0.129,
+                -0.497,
+            ],
+            screen_offset: [
+                -50.4,
+                -68.18,
+            ],
+            bottom_offset: 0,
+            reload_time: 60,
+            force_magnitude: 0.4,
+            force_decay: 0.877,
+            hitbox_size: [
+                0.09,
+                0.09,
+            ],
+            boomerang: true,
+            player_knock_back_force: 0.09,
+            player_knock_back_decay: 0.914,
+            keyframes: [
+                (
+                    time: 0,
+                    pos: [
+                        0.144,
+                        -0.35,
+                    ],
+                    rot: 25,
+                    bottom_offset: 0,
+                    behind_wielder: false,
+                ),
+                (
+                    time: 0.33,
+                    pos: [
+                        0.2496,
+                        -0.864,
+                    ],
+                    rot: -45,
+                    bottom_offset: 0,
+                    behind_wielder: false,
+                ),
+                (
+                    time: 0.76,
+                    pos: [
+                        -0.064,
+                        -0.7,
+                    ],
+                    rot: -200,
+                    bottom_offset: 0,
+                    behind_wielder: true,
+                ),
+                (
+                    time: 0.91,
+                    pos: [
+                        -0.129,
+                        -0.497,
+                    ],
+                    rot: 0,
+                    bottom_offset: 0,
+                    behind_wielder: false,
+                ),
+            ],
+            animation_art: 3,
+        ),
+        speed: 0.039,
+        stop_decay: 0.92,
+    ),
+    prefab: (
+        instances: [
+            (
+                value: None,
+                version: 0,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            -0.21208875,
+                            1.7250949,
+                        ]),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            0.46464178,
+                            1.9863758,
+                        ]),
+                    ],
+                )),
+                version: 13,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            -0.606,
+                            0.505,
+                        ]),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            -1.2112577,
+                            0.831,
+                        ]),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            -0.698,
+                            2.703,
+                        ]),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 5,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            -0.413,
+                            -0.035,
+                        ]),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            -0.796,
+                            1.512,
+                        ]),
+                    ],
+                )),
+                version: 5,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            -1.412,
+                            1.583,
+                        ]),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            -0.067,
+                            2.824,
+                        ]),
+                    ],
+                )),
+                version: 5,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 6,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            -0.84119284,
+                            2.6194186,
+                        ]),
+                    ],
+                )),
+                version: 7,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            -0.50410706,
+                            -0.16,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            1.415,
+                            1.998,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            2.031,
+                            1.928,
+                        ]),
+                    ],
+                )),
+                version: 11,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            2.9243243,
+                            2.0704775,
+                        ]),
+                    ],
+                )),
+                version: 7,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            -0.94586015,
+                            0.267,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            0.262,
+                            -0.224,
+                        ]),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            0.84346044,
+                            -0.26099172,
+                        ]),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            1.654,
+                            -0.628,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            2.9407623,
+                            -1.420308,
+                        ]),
+                    ],
+                )),
+                version: 5,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            2.5067172,
+                            -1.3362157,
+                        ]),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            4.349925,
+                            -0.883,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            4.0329494,
+                            0.12068887,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            4.541755,
+                            0.5751357,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            4.641435,
+                            1.1697277,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            2.032452,
+                            -0.90458107,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            4.089928,
+                            -0.33769533,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            4.138,
+                            -1.535,
+                        ]),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            4.534623,
+                            3.298,
+                        ]),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            3.6899784,
+                            2.141,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            4.154185,
+                            2.631,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            4.973331,
+                            3.2920809,
+                        ]),
+                    ],
+                )),
+                version: 5,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            5.777165,
+                            3.3782732,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            3.3937402,
+                            -1.5898345,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 7,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            3.1890845,
+                            -0.62364906,
+                        ]),
+                    ],
+                )),
+                version: 11,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            2.3945124,
+                            -0.3797405,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            5.1023192,
+                            1.5429391,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            5.5913315,
+                            1.8029833,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            1.2497106,
+                            -0.92370903,
+                        ]),
+                    ],
+                )),
+                version: 5,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            -0.14709672,
+                            2.4703634,
+                        ]),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            -1.3820654,
+                            1.186396,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 5,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            -0.35866216,
+                            0.18980569,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 3,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            4.0388246,
+                            0.3864777,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+        ],
+        fabs: [
+            (
+                value: None,
+                version: 0,
+            ),
+            (
+                value: Some((
+                    name: "Vase",
+                    comps: [
+                        Art(8),
+                        DeathAnimation(7),
+                        Health(1),
+                        Hitbox([
+                            0.25,
+                            0.2,
+                        ]),
+                        Collision((
+                            blacklist: [],
+                            whitelist: [
+                                Enemy,
+                                World,
+                                Weapon,
+                                Player,
+                            ],
+                            membership: [
+                                World,
+                            ],
+                        )),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    name: "GrassClump",
+                    comps: [
+                        Art(12),
+                        Collision((
+                            blacklist: [],
+                            whitelist: [],
+                            membership: [],
+                        )),
+                        Hitbox([
+                            0.613,
+                            0.358,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    name: "Bee",
+                    comps: [
+                        Art(13),
+                        Collision((
+                            blacklist: [],
+                            whitelist: [],
+                            membership: [],
+                        )),
+                        Hitbox([
+                            0.196,
+                            0.013,
+                        ]),
+                        Script("BugWander"),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    name: "Inchworm",
+                    comps: [
+                        Art(11),
+                        Collision((
+                            blacklist: [],
+                            whitelist: [
+                                Creature,
+                            ],
+                            membership: [
+                                Creature,
+                            ],
+                        )),
+                        Hitbox([
+                            0.074,
+                            0.074,
+                        ]),
+                        Script("Inchworm"),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    name: "Butterfly",
+                    comps: [
+                        Art(10),
+                        Collision((
+                            blacklist: [],
+                            whitelist: [],
+                            membership: [],
+                        )),
+                        Hitbox([
+                            0.237,
+                            0.03,
+                        ]),
+                        Script("BugWander"),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    name: "Ruin",
+                    comps: [
+                        Art(14),
+                        Hitbox([
+                            0,
+                            0,
+                        ]),
+                        Collision((
+                            blacklist: [],
+                            whitelist: [],
+                            membership: [],
+                        )),
+                        ZOffset(-0.893),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    name: "Stump",
+                    comps: [
+                        Art(15),
+                        Collision((
+                            collision_static: Some(()),
+                            blacklist: [],
+                            whitelist: [
+                                Player,
+                            ],
+                            membership: [
+                                World,
+                            ],
+                        )),
+                        Hitbox([
+                            1.629,
+                            0.542,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+        ],
+    ),
+)

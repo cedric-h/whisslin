@@ -21,10 +21,6 @@ macroquad = { git = "https://github.com/cedric-h/macroquad", branch = "char_even
 egui = "=0.1.3"
 emigui-miniquad = { git = "https://github.com/cedric-h/emigui-miniquad.git", rev = "ba00f7a445563d44790afc760f29d02b1a93ef5e", features = ["macroquad"] }
 
-# serde
-serde = { version = "1.0.115", features = [ "derive" ] }
-serde_json = "1.0.57"
-
 # ecs
 hecs = "0.2.14"
 l8r = { git = "https://github.com/cedric-h/l8r.git" }
@@ -36,7 +32,9 @@ na = { package = "nalgebra", version = "0.22.0", default-features = false, featu
 
 # storage
 fxhash = "0.2.1"
+ron = "0.6.2"
 slotmap = { version = "0.4.0", features = ["serde", "unstable"] }
+serde = { version = "1.0.115", features = [ "derive" ] }
 
 # script
 glsp = { version = "0.1.0", features = ["unsafe-internals", "compiler"] }

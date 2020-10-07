@@ -43,8 +43,8 @@ pub fn dev_ui(ui_plugin: &mut emigui_miniquad::UiPlugin, world: &mut Game) {
                 #[cfg(not(target = "wasm32-unknown-unknown"))]
                 if ui.button("Save To File").clicked {
                     std::fs::write(
-                        "config.json",
-                        serde_json::to_vec_pretty(&world.config).unwrap(),
+                        "config.ron",
+                        ron::ser::to_string_pretty(&world.config, Default::default()).unwrap(),
                     )
                     .unwrap()
                 }
@@ -61,7 +61,9 @@ pub fn dev_ui(ui_plugin: &mut emigui_miniquad::UiPlugin, world: &mut Game) {
         if world.config.tile_expanded {
             egui::Window::new("Tiling")
                 .default_pos(egui::pos2(0.0, 50.0))
-                .show(ui.ctx(), |ui| world.config.tile.dev_ui(ui));
+                .show(ui.ctx(), |ui| {
+                    map::dev_ui(world, ui);
+                });
         }
 
         if world.config.draw_expanded {
@@ -107,7 +109,7 @@ pub struct World {
 impl World {
     pub async fn new() -> Self {
         let glsp_runtime = glsp::Runtime::new();
-        let config = serde_json::from_slice(&load_file("config.json").await.unwrap()).unwrap();
+        let config = ron::de::from_reader(&*load_file("config.ron").await.unwrap()).unwrap();
         let images = draw::Images::load(&config).await;
         glsp_runtime.run(move || {
             glsp::add_lib(script::Intake::new());

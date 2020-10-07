@@ -299,7 +299,7 @@ impl Default for Spritesheet {
     }
 }
 impl Spritesheet {
-    /// Coords are in terms of tiles, not pixels.
+    /// Coords are in terms of spritesheet tiles, not pixels.
     /// Multiply by tile texture size for pixel coords.
     fn coords(self, af: usize) -> glam::Vec2 {
         let row = af / self.columns.get();
