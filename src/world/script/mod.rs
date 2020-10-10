@@ -190,6 +190,7 @@ rdata! {
         "op-eq?": Self::op_eq
     }
 }
+
 impl Ent {
     fn r#move(&self, V2(x, y): V2) -> GResult<()> {
         let Game { ecs, phys, .. } = &mut *Game::borrow_mut();

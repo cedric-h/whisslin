@@ -33,12 +33,26 @@ impl Config {
         )
     }
 
+    /// The mouse position in world coordinates
+    pub fn mouse_world(&self) -> Vec2 {
+        let screen = Vec2::new(screen_width(), screen_height());
+        let mut offset = {
+            let (x, y) = mouse_position();
+            Vec2::new(x, y)
+        };
+        offset = (offset - screen / 2.0) / screen;
+        *offset.y_mut() /= screen.x() / screen.y();
+        offset *= self.zoom * 2.0;
+        *offset.y_mut() -= self.camera_move;
+        offset
+    }
+
     #[cfg(feature = "confui")]
     pub fn dev_ui(&mut self, ui: &mut egui::Ui) {
         match &mut self.popup {
             Popup::Clear => {
                 ui.label("zoom");
-                ui.add(egui::DragValue::f32(&mut self.zoom).speed(0.001));
+                ui.add(egui::DragValue::f32(&mut self.zoom).speed(0.1));
 
                 ui.label("camera move");
                 ui.add(egui::DragValue::f32(&mut self.camera_move).speed(0.01));

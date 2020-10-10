@@ -10,8 +10,14 @@ pub struct Config {
     tiles: fxhash::FxHashMap<(i32, i32), ()>,
     pub art_handle: draw::ArtHandle,
     #[cfg(feature = "confui")]
-    #[serde(skip, default)]
+    #[serde(skip)]
     pub dirty: bool,
+    #[cfg(feature = "confui")]
+    #[serde(skip)]
+    mouse_hot: bool,
+    // #[cfg(feature = "confui")]
+    // #[serde(skip)]
+    // selected_tiles: fxhash::FxHashSet<(i32, i32)>,
 }
 pub fn dev_ui(
     super::Game {
@@ -22,6 +28,7 @@ pub fn dev_ui(
     }: &mut super::Game,
     ui: &mut egui::Ui,
 ) -> Option<()> {
+    use macroquad::*;
     let start = tile.clone();
 
     ui.label("tile size");
@@ -34,16 +41,20 @@ pub fn dev_ui(
 
     // draw debug hexagon
     let index = {
-        let player_pos = phys
-            .collision_object(player.phys_handle)?
-            .position()
-            .translation
-            .vector;
+        let player_pos = {
+            let p = phys
+                .collision_object(player.phys_handle)?
+                .position()
+                .translation
+                .vector;
+            Vec2::new(p.x, p.y)
+        };
         let size = tile.size + tile.border_thickness;
-        let index = translation_to_index(size, Vec2::new(player_pos.x, player_pos.y));
-        let p = index_to_translation(size, index);
+        let offset = Vec2::new(0.1307 * size, size / -2.0);
+        let index = translation_to_index(size, player_pos + draw.mouse_world() - offset);
+        let p = index_to_translation(size, index) + offset;
 
-        macroquad::set_camera(draw.camera({
+        set_camera(draw.camera({
             let mut i = phys
                 .collision_object(player.phys_handle)?
                 .position()
@@ -51,28 +62,25 @@ pub fn dev_ui(
             i.translation.vector.y += draw.camera_move;
             i
         }));
-        macroquad::draw_hexagon(
-            p.x() + (0.1307 * size),
-            p.y() - (size / 2.0),
-            size,
-            0.01,
-            true,
-            macroquad::RED,
-            macroquad::Color([0, 0, 0, 0]),
-        );
+
+        draw_hexagon(p.x(), p.y(), size, 0.01, true, RED, Color([0, 0, 0, 0]));
 
         let (x, y) = index;
         (x - 1, y)
     };
 
-    if tile.tiles.get(&index).is_some() {
-        if ui.button("Remove Tile").clicked {
-            tile.tiles.remove(&index);
+    if !ui.ctx().wants_mouse_input() && is_mouse_button_down(MouseButton::Left) {
+        if !tile.mouse_hot {
+            if tile.tiles.contains_key(&index) {
+                tile.tiles.remove(&index);
+            } else {
+                tile.tiles.insert(index, ());
+            }
             tile.dirty = true;
         }
-    } else if ui.button("Add Tile").clicked {
-        tile.tiles.insert(index, ());
-        tile.dirty = true;
+        tile.mouse_hot = true;
+    } else {
+        tile.mouse_hot = false
     }
 
     Some(())

@@ -16,6 +16,9 @@ pub struct Config {
     #[cfg(feature = "confui")]
     #[serde(skip)]
     popup: Popup,
+    #[cfg(feature = "confui")]
+    #[serde(skip)]
+    pastes: usize,
 }
 
 impl Config {
@@ -26,7 +29,7 @@ impl Config {
 
 slotmap::new_key_type! { pub struct InstanceKey; }
 
-#[derive(Default, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InstanceConfig {
     prefab_key: PrefabKey,

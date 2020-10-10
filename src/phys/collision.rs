@@ -6,7 +6,7 @@ use hecs::Entity;
 /// Instead, only the things that run into them will move.
 ///
 /// Walls, fences, mountains, etc. can be considered to be CollisionStatic.
-#[derive(serde::Deserialize, serde::Serialize, Default, Clone, PartialEq)]
+#[derive(serde::Deserialize, serde::Serialize, Default, Clone, PartialEq, Debug)]
 pub struct CollisionStatic;
 
 /// Assigning this component to an Entity allows you to get finer grained control

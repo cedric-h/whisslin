@@ -121,7 +121,7 @@ pub fn physical_from_comps<'a>(
         .build(ecs, phys, e)
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq)]
+#[derive(serde::Deserialize, serde::Serialize, Clone, Debug, PartialEq)]
 pub enum Comp {
     Art(draw::ArtHandle),
     ZOffset(f32),

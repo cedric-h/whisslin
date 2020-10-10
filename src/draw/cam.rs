@@ -28,7 +28,7 @@ impl CedCam2D {
 
     /// Returns the screen space position for a 2D camera world space position
     pub fn world_to_screen(&self, point: na::Vector2<f32>) -> na::Vector2<f32> {
-        let mat = self.scale_matrix().inverse();
+        let mat = self.matrix().inverse();
         let transform = mat.transform_point3(vec3(point.x, point.y, 0.0));
 
         na::Vector2::new(transform.x(), transform.y())
@@ -36,7 +36,7 @@ impl CedCam2D {
 
     // Returns the world space position for a 2D camera screen space position
     pub fn screen_to_world(&self, point: na::Vector2<f32>) -> na::Vector2<f32> {
-        let inv_mat = self.scale_matrix();
+        let inv_mat = self.matrix();
         let transform = inv_mat.transform_point3(vec3(point.x, point.y, 0.0));
 
         na::Vector2::new(transform.x(), transform.y())

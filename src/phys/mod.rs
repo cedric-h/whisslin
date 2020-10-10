@@ -24,7 +24,7 @@ const ALL_COLLIDE: &[Collide] = {
 };
 
 /// A collision relationship :P
-#[derive(serde::Deserialize, serde::Serialize, Default, Clone, PartialEq)]
+#[derive(serde::Deserialize, serde::Serialize, Default, Clone, PartialEq, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Collisionship {
     collision_static: Option<collision::CollisionStatic>,
@@ -102,9 +102,27 @@ impl Collisionship {
                 }
             });
         }
-        list_edit(ui, "Membership", &mut self.adding_membership, &mut self.membership, &mut dirty); 
-        list_edit(ui, "Whitelist", &mut self.adding_whitelist, &mut self.whitelist, &mut dirty);
-        list_edit(ui, "Blacklist", &mut self.adding_blacklist, &mut self.blacklist, &mut dirty);
+        list_edit(
+            ui,
+            "Membership",
+            &mut self.adding_membership,
+            &mut self.membership,
+            &mut dirty,
+        );
+        list_edit(
+            ui,
+            "Whitelist",
+            &mut self.adding_whitelist,
+            &mut self.whitelist,
+            &mut dirty,
+        );
+        list_edit(
+            ui,
+            "Blacklist",
+            &mut self.adding_blacklist,
+            &mut self.blacklist,
+            &mut dirty,
+        );
 
         dirty
     }
