@@ -354,7 +354,11 @@ impl Action {
                     .find(|t| t.entity == e)
                     .map(|t| t.selected = matches!(step, Back));
             }
-            Paste { id, selected_before, clipboard } => match step {
+            Paste {
+                id,
+                selected_before,
+                clipboard,
+            } => match step {
                 Forward => {
                     selected_before.clear();
                     for t in spawned.iter_mut() {
