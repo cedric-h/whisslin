@@ -19,6 +19,8 @@ pub struct Config {
     // #[serde(skip)]
     // selected_tiles: fxhash::FxHashSet<(i32, i32)>,
 }
+
+#[cfg(feature = "confui")]
 pub fn dev_ui(
     super::Game {
         config: super::Config { tile, draw, .. },
