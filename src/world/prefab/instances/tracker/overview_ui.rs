@@ -28,13 +28,7 @@ pub fn overview_ui(ui: &mut egui::Ui, game: &mut Game) -> Option<()> {
 
     scan(game, cursor_pos);
 
-    selector::copy_paste(game, cursor_pos);
-
-    let mut selector = std::mem::take(&mut game.instance_tracker.selector);
-    selector::undo_redo(&mut selector, game, cursor_pos);
-    selector::add_selections(ui, &mut selector, game, cursor_pos);
-    selector::manage_selections(ui, &mut selector, game, cursor_pos);
-    game.instance_tracker.selector = selector;
+    selector::dev_ui(ui, game, cursor_pos);
 
     show_selected(ui, game);
     recycle(game);
@@ -55,7 +49,11 @@ fn reset_ui(
         ..
     }: &mut Game,
 ) {
-    if ui.button("Reset Instances").clicked {
+    use macroquad::*;
+
+    if ui.button("Reset Instances").clicked
+        || (is_key_down(KeyCode::LeftControl) && is_key_pressed(KeyCode::R))
+    {
         *resetting = true;
         for tag in &*spawned {
             dead.mark(tag.entity);

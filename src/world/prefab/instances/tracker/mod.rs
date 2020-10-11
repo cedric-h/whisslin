@@ -39,6 +39,14 @@ pub struct Tracker {
 }
 
 impl Tracker {
+    pub fn selected(&self) -> impl Iterator<Item = &Tag> {
+        self.spawned.iter().filter(|t| t.selected)
+    }
+
+    pub fn selected_mut(&mut self) -> impl Iterator<Item = &mut Tag> {
+        self.spawned.iter_mut().filter(|t| t.selected)
+    }
+
     pub fn instances_of(&self, pf_key: PrefabKey) -> impl Iterator<Item = &Tag> {
         self.spawned.iter().filter(move |t| t.prefab_key == pf_key)
     }
