@@ -1,8 +1,8 @@
+#[cfg(feature = "confui")]
+use super::Popup;
 use super::{Comp, InstanceConfig, InstanceKey, PrefabKey};
 use crate::{phys, world};
 use glam::Vec2;
-#[cfg(feature = "confui")]
-use super::Popup;
 
 #[cfg(feature = "confui")]
 mod overview_ui;

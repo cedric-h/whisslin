@@ -72,11 +72,40 @@ impl Action {
 
         macro_rules! move_pos {
             ( $e:ident, $($w:tt)* ) => { {
-                for t in spawned.iter().filter(|t| t.selected) {
-                    if let Some(c) = ecs.get(t.entity).ok().and_then(|h| phys.get_mut(*h)) {
+                for tag in spawned.iter().filter(|t| t.selected) {
+                    if let Some(c) = ecs.get(tag.entity).ok().and_then(|h| phys.get_mut(*h)) {
                         let mut $e = *c.position();
                         $e = $($w)*;
                         c.set_position($e);
+
+                        if let Some(ik) = tag.instance_key() {
+                            let (mut found_pos, mut found_rot) = (false, false);
+                            let iso = c.position();
+                            let rot = iso.rotation.angle();
+                            let pos = iso.translation.vector;
+                            let comps = &mut prefab.instances[ik].comps;
+
+                            for comp in comps.iter_mut() {
+                                match comp {
+                                    Comp::Position(v) => {
+                                        *v = pos;
+                                        found_pos = true;
+                                    }
+                                    Comp::Angle(x) => {
+                                        *x = rot;
+                                        found_rot = true;
+                                    }
+                                    _ => {}
+                                }
+                            }
+
+                            if !found_pos {
+                                comps.push(Comp::Position(pos));
+                            }
+                            if !found_rot {
+                                comps.push(Comp::Angle(rot));
+                            }
+                        }
                     }
                 }
             } }

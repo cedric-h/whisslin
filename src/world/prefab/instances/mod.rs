@@ -192,7 +192,8 @@ pub fn clear_dead(
     }: &mut Game,
 ) {
     #[cfg(feature = "confui")]
-    trk.spawned.drain_filter(|tag| !tag.killed && dead.is_marked(tag.entity));
+    trk.spawned
+        .drain_filter(|tag| !tag.killed && dead.is_marked(tag.entity));
 
     #[cfg(not(feature = "confui"))]
     trk.spawned.drain_filter(|tag| dead.is_marked(tag.entity));
