@@ -94,7 +94,7 @@ pub fn dev_ui(ui_plugin: &mut emigui_miniquad::UiPlugin, world: &mut Game) {
     });
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct IgnoreInputs {
     keyboard: bool,
     mouse: bool,
@@ -145,13 +145,15 @@ impl World {
     pub fn update(&mut self) {
         use glsp::Lib;
 
-        let ignore_inputs = IgnoreInputs {
-            keyboard: self.ui.egui_ctx.wants_keyboard_input(),
-            mouse: self.ui.egui_ctx.wants_mouse_input(),
-        };
+        let ui_want_keyboard = self.ui.egui_ctx.wants_keyboard_input();
+        let ui_want_mouse = self.ui.egui_ctx.wants_mouse_input();
 
         self.glsp_runtime.run(move || {
-            Game::borrow_mut().update(ignore_inputs);
+            let mut ii = std::mem::take(&mut Game::borrow_mut().ignore_inputs);
+            ii.keyboard = ii.keyboard || ui_want_keyboard;
+            ii.mouse = ii.mouse || ui_want_mouse;
+
+            Game::borrow_mut().update(ii);
             script::Cache::borrow_mut().update();
             Game::borrow_mut().apply_l8r();
             script::Cache::borrow_mut().cleanup();
@@ -226,6 +228,7 @@ impl Dead {
 glsp::lib! {
     pub struct Game {
         pub ecs: hecs::World,
+        ignore_inputs: IgnoreInputs,
         pub l8r: L8r<Game>,
         pub dead: Dead,
         pub map: Map,
@@ -253,6 +256,7 @@ impl Game {
 
         let mut world = Self {
             player: Player::new(&mut ecs, &mut phys, &config),
+            ignore_inputs: Default::default(),
             map: Map::new(&config),
             l8r: L8r::new(),
             dead: Dead::new(),

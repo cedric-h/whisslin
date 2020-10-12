@@ -261,6 +261,8 @@ impl Action {
 }
 
 pub fn dev_ui(ui: &mut egui::Ui, game: &mut Game, cursor_pos: Vec2) {
+    game.ignore_inputs.mouse = true;
+
     copy_paste(game, cursor_pos);
     undo_redo(game, cursor_pos);
 
@@ -465,6 +467,10 @@ fn add_selections(ui: &mut egui::Ui, game: &mut Game, cursor_pos: Vec2, select_s
         } else {
             *select_sealed = false;
         }
+    }
+
+    if is_key_down(KeyCode::LeftControl) && is_key_down(KeyCode::A) {
+        game.ignore_inputs.keyboard = true;
     }
 
     if is_key_down(KeyCode::LeftControl) && is_key_pressed(KeyCode::A) {
