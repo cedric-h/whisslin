@@ -214,6 +214,8 @@ fn recycle(
             *tag = {
                 let mut new_tag = prefab.spawn_config_instance(ecs, phys, draw, *instance_key);
                 new_tag.generation = tag.generation;
+                new_tag.paste = tag.paste;
+                new_tag.selected = tag.selected;
                 new_tag
             };
             true

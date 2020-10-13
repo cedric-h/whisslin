@@ -360,13 +360,13 @@
             (23, -8): (),
             (9, -12): (),
             (11, -4): (),
-            (-1, -4): (),
             (15, -2): (),
+            (-1, -4): (),
         },
         art_handle: 4,
     ),
     draw: (
-        zoom: 4.8,
+        zoom: 3.2,
         camera_move: 0.41,
         art: [
             (
@@ -520,10 +520,26 @@
             ),
             (
                 file: "atmosphere/mushroom.png",
-                scale: 0.0025,
+                scale: 0.0035,
             ),
             (
                 file: "atmosphere/sunflower.png",
+                scale: 0.0025,
+            ),
+            (
+                file: "atmosphere/log_bridge.png",
+                scale: 0.0017,
+            ),
+            (
+                file: "atmosphere/grassy_pebble.png",
+                scale: 0.0025,
+            ),
+            (
+                file: "atmosphere/grassy_rock.png",
+                scale: 0.0025,
+            ),
+            (
+                file: "target.png",
                 scale: 0.0025,
             ),
         ],
@@ -607,7 +623,7 @@
             ],
             animation_art: 3,
         ),
-        speed: 0.039,
+        speed: 0.034,
         stop_decay: 0.92,
     ),
     prefab: (
@@ -623,14 +639,94 @@
                         version: 1,
                     ),
                     comps: [
-                        Position([
-                            -3.6100998,
-                            -2.1713402,
-                        ]),
                         Angle(0),
+                        Position([
+                            -3.8205557,
+                            -0.9759567,
+                        ]),
                     ],
                 )),
-                version: 1,
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -2.82135,
+                            -1.0347335,
+                        ]),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -2.9036372,
+                            -0.21185815,
+                        ]),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            0.30557638,
+                            -2.6217074,
+                        ]),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -0.5408098,
+                            -3.1977203,
+                        ]),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            0.6935031,
+                            -3.0566556,
+                        ]),
+                    ],
+                )),
+                version: 5,
             ),
             (
                 value: Some((
@@ -640,13 +736,125 @@
                     ),
                     comps: [
                         Position([
-                            -4.4092875,
-                            -0.84161484,
+                            -0.7288957,
+                            -2.774527,
                         ]),
                         Angle(0),
                     ],
                 )),
-                version: 1,
+                version: 7,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 10,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(2.293),
+                        Position([
+                            7.7699766,
+                            10.109631,
+                        ]),
+                    ],
+                )),
+                version: 9,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 7,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            0.05197072,
+                            -2.8679378,
+                        ]),
+                        Angle(0),
+                    ],
+                )),
+                version: 9,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 13,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            8.136815,
+                            1.615363,
+                        ]),
+                        Angle(0),
+                    ],
+                )),
+                version: 11,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 6,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            -3.263434,
+                            -0.07531431,
+                        ]),
+                        Angle(0),
+                    ],
+                )),
+                version: 7,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 10,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0.471),
+                        Position([
+                            5.3451943,
+                            1.6305203,
+                        ]),
+                    ],
+                )),
+                version: 9,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 10,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(1.012),
+                        Position([
+                            8.204607,
+                            3.971426,
+                        ]),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 10,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            4.163304,
+                            1.0128874,
+                        ]),
+                        Angle(0.471),
+                    ],
+                )),
+                version: 3,
             ),
             (
                 value: Some((
@@ -655,230 +863,10 @@
                         version: 1,
                     ),
                     comps: [
-                        Position([
-                            -3.0221472,
-                            -2.3174953,
-                        ]),
                         Angle(0),
                         Position([
-                            -3.0221472,
-                            -2.3174953,
-                        ]),
-                    ],
-                )),
-                version: 1,
-            ),
-            (
-                value: Some((
-                    prefab_key: (
-                        idx: 2,
-                        version: 1,
-                    ),
-                    comps: [
-                        Position([
-                            -4.0366592,
-                            -1.3536516,
-                        ]),
-                        Angle(0),
-                        Position([
-                            -4.0366592,
-                            -1.3536516,
-                        ]),
-                    ],
-                )),
-                version: 1,
-            ),
-            (
-                value: Some((
-                    prefab_key: (
-                        idx: 2,
-                        version: 1,
-                    ),
-                    comps: [
-                        Position([
-                            -0.98664725,
-                            -3.59199,
-                        ]),
-                        Angle(0),
-                        Position([
-                            -0.98664725,
-                            -3.59199,
-                        ]),
-                    ],
-                )),
-                version: 1,
-            ),
-            (
-                value: Some((
-                    prefab_key: (
-                        idx: 2,
-                        version: 1,
-                    ),
-                    comps: [
-                        Position([
-                            0.1918004,
-                            -3.7511928,
-                        ]),
-                        Angle(0),
-                        Position([
-                            0.1918004,
-                            -3.7511928,
-                        ]),
-                        Position([
-                            0.1918004,
-                            -3.7511928,
-                        ]),
-                    ],
-                )),
-                version: 1,
-            ),
-            (
-                value: Some((
-                    prefab_key: (
-                        idx: 2,
-                        version: 1,
-                    ),
-                    comps: [
-                        Position([
-                            -1.9753646,
-                            -3.005073,
-                        ]),
-                        Angle(0),
-                        Position([
-                            -1.9753646,
-                            -3.005073,
-                        ]),
-                        Position([
-                            -1.9753646,
-                            -3.005073,
-                        ]),
-                    ],
-                )),
-                version: 1,
-            ),
-            (
-                value: Some((
-                    prefab_key: (
-                        idx: 2,
-                        version: 1,
-                    ),
-                    comps: [
-                        Position([
-                            -2.6531343,
-                            -2.5012023,
-                        ]),
-                        Angle(0),
-                        Position([
-                            -2.6531343,
-                            -2.5012023,
-                        ]),
-                    ],
-                )),
-                version: 1,
-            ),
-            (
-                value: Some((
-                    prefab_key: (
-                        idx: 2,
-                        version: 1,
-                    ),
-                    comps: [
-                        Position([
-                            -1.1716839,
-                            -3.2641282,
-                        ]),
-                        Angle(0),
-                        Position([
-                            -1.1716839,
-                            -3.2641282,
-                        ]),
-                        Position([
-                            -1.1716839,
-                            -3.2641282,
-                        ]),
-                    ],
-                )),
-                version: 1,
-            ),
-            (
-                value: Some((
-                    prefab_key: (
-                        idx: 2,
-                        version: 1,
-                    ),
-                    comps: [
-                        Position([
-                            0.76440704,
-                            -3.3839579,
-                        ]),
-                        Angle(0),
-                        Position([
-                            0.76440704,
-                            -3.3839579,
-                        ]),
-                        Position([
-                            0.76440704,
-                            -3.3839579,
-                        ]),
-                        Position([
-                            0.76440704,
-                            -3.3839579,
-                        ]),
-                    ],
-                )),
-                version: 1,
-            ),
-            (
-                value: Some((
-                    prefab_key: (
-                        idx: 2,
-                        version: 1,
-                    ),
-                    comps: [
-                        Position([
-                            -2.4543786,
-                            -2.7608163,
-                        ]),
-                        Angle(0),
-                        Position([
-                            -2.4543786,
-                            -2.7608163,
-                        ]),
-                        Position([
-                            -2.4543786,
-                            -2.7608163,
-                        ]),
-                        Position([
-                            -2.4543786,
-                            -2.7608163,
-                        ]),
-                    ],
-                )),
-                version: 1,
-            ),
-            (
-                value: Some((
-                    prefab_key: (
-                        idx: 2,
-                        version: 1,
-                    ),
-                    comps: [
-                        Position([
-                            -0.2504516,
-                            -3.349533,
-                        ]),
-                        Angle(0),
-                        Position([
-                            -0.2504516,
-                            -3.349533,
-                        ]),
-                        Position([
-                            -0.2504516,
-                            -3.349533,
-                        ]),
-                        Position([
-                            -0.2504516,
-                            -3.349533,
+                            -3.9968858,
+                            -0.41169906,
                         ]),
                     ],
                 )),
@@ -891,26 +879,234 @@
                         version: 1,
                     ),
                     comps: [
-                        Position([
-                            1.2122614,
-                            -3.2333107,
-                        ]),
                         Angle(0),
                         Position([
-                            1.2122614,
-                            -3.2333107,
+                            -3.3738518,
+                            -1.1640424,
                         ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 8,
+                        version: 1,
+                    ),
+                    comps: [
                         Position([
-                            1.2122614,
-                            -3.2333107,
+                            2.7747223,
+                            0.7571383,
                         ]),
+                        Angle(0),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 8,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
                         Position([
-                            1.2122614,
-                            -3.2333107,
+                            0.97576237,
+                            0.052463382,
                         ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 8,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
                         Position([
-                            1.2122614,
-                            -3.2333107,
+                            -0.8449686,
+                            -0.38175392,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 8,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            3.4117649,
+                            -0.37963572,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 8,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            1.9569886,
+                            -1.3129097,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 8,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            0.7906037,
+                            -2.109704,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 11,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            1.3220888,
+                            -3.0743406,
+                        ]),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 11,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            1.3338445,
+                            1.0400362,
+                        ]),
+                        Angle(0),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 9,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            -1.7578158,
+                            -2.098645,
+                        ]),
+                        Angle(0),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 11,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -2.5336702,
+                            0.42875743,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 11,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -3.3212795,
+                            -2.0046024,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 12,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            -3.2860134,
+                            0.40524715,
+                        ]),
+                        Angle(0),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 12,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            2.944329,
+                            -1.4050785,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 12,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -0.8173866,
+                            -3.5327997,
                         ]),
                     ],
                 )),
@@ -923,14 +1119,826 @@
                         version: 1,
                     ),
                     comps: [
-                        Position([
-                            -3.746219,
-                            -1.8052691,
-                        ]),
                         Angle(0),
                         Position([
-                            -3.746219,
-                            -1.8052691,
+                            -1.716346,
+                            -2.7510164,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -2.9271486,
+                            -1.8340979,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -2.198316,
+                            0.082026124,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            0.11749029,
+                            0.046760082,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            0.693503,
+                            0.4229318,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            1.2460049,
+                            0.7050605,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            0.9286109,
+                            1.2458069,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            0.68174756,
+                            0.79910314,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -2.4804444,
+                            -2.5159094,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            1.7867521,
+                            1.2693179,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            2.080636,
+                            0.752082,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            2.503829,
+                            1.1752746,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 12,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            1.6042184,
+                            0.86370623,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 12,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            1.9686346,
+                            1.0870584,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -2.0171645,
+                            0.48171377,
+                        ]),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -3.6089602,
+                            0.046760082,
+                        ]),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -3.585016,
+                            0.50556046,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -2.794,
+                            0.69934195,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            2.3510098,
+                            -1.6460121,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            3.6205888,
+                            -1.1405314,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            2.8212237,
+                            -1.1052654,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            3.279683,
+                            -1.5872352,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            3.3619714,
+                            -0.705583,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 12,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            3.9435349,
+                            -0.49991548,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            4.0320277,
+                            -0.17659163,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -1.5987926,
+                            0.023249388,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -0.74065113,
+                            0.011493444,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -3.6324704,
+                            -1.7870764,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -3.0799682,
+                            -2.2808018,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -2.7037966,
+                            -1.4814371,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 12,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -3.4858534,
+                            -1.5461429,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -3.9733763,
+                            -1.5284586,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -3.620715,
+                            -2.2925572,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 11,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -4.4145284,
+                            -0.75853395,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -4.3613024,
+                            -1.0229781,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -1.19911,
+                            -3.4563384,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -0.38799012,
+                            -3.7267118,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            0.2703101,
+                            -3.385806,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            0.88158894,
+                            -3.6209133,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 11,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            0.2641061,
+                            -3.70913,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 11,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -2.3926058,
+                            -2.874499,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -1.3871958,
+                            -3.0566556,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -2.3276248,
+                            -3.1036775,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            1.23425,
+                            -3.35054,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            1.528134,
+                            -2.833304,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            1.1754731,
+                            -2.5629306,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            1.7279752,
+                            -3.1154325,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 12,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            1.2398016,
+                            -3.6621082,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            1.2577612,
+                            -2.1162267,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            1.575156,
+                            -1.610746,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 2,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -1.0462903,
+                            -3.761978,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 11,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            -3.991335,
+                            -0.12374449,
                         ]),
                     ],
                 )),
@@ -957,10 +1965,10 @@
                             collision_static: None,
                             blacklist: [],
                             whitelist: [
-                                World,
-                                Weapon,
                                 Enemy,
                                 Player,
+                                Weapon,
+                                World,
                             ],
                             membership: [
                                 World,
@@ -1130,6 +2138,89 @@
                             0,
                             0,
                         ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    name: "LogBridge",
+                    comps: [
+                        Art(18),
+                        Collision((
+                            collision_static: None,
+                            blacklist: [],
+                            whitelist: [],
+                            membership: [],
+                        )),
+                        Hitbox([
+                            0,
+                            0,
+                        ]),
+                        ZOffset(-1.721),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    name: "GrassyPebble",
+                    comps: [
+                        Art(19),
+                        Collision((
+                            collision_static: None,
+                            blacklist: [],
+                            whitelist: [],
+                            membership: [],
+                        )),
+                        Hitbox([
+                            0,
+                            0,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    name: "GrassyRock",
+                    comps: [
+                        Art(20),
+                        Collision((
+                            collision_static: None,
+                            blacklist: [],
+                            whitelist: [],
+                            membership: [],
+                        )),
+                        Hitbox([
+                            0,
+                            0,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    name: "SlimeTarget",
+                    comps: [
+                        Art(21),
+                        Collision((
+                            collision_static: Some(()),
+                            blacklist: [],
+                            whitelist: [
+                                Player,
+                            ],
+                            membership: [
+                                World,
+                            ],
+                        )),
+                        Hitbox([
+                            0.481,
+                            0.134,
+                        ]),
+                        Health(1),
+                        DeathAnimation(6),
                     ],
                 )),
                 version: 1,
