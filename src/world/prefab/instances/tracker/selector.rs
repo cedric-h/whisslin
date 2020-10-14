@@ -553,7 +553,7 @@ fn manage_selections(
     draw_rectangle(average.x(), average.y(), 0.350, 0.032, MAGENTA);
     draw_rectangle(average.x(), average.y(), 0.032, -0.350, ORANGE);
 
-    if is_key_pressed(KeyCode::Backspace) {
+    if !ui.ctx().wants_keyboard_input() && is_key_pressed(KeyCode::Backspace) {
         delete_selected(game, cursor_pos);
     }
 

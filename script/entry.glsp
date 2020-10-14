@@ -154,4 +154,29 @@
             (()
               [@idle-goal 'pos]))))))))
 
-(arr BugWander Inchworm)
+; Zoomshrooms
+; - teleport items thrown into them to other zoomshrooms,
+; - "breathe", slightly changing in size
+; - spawn smaller, non-teleportational shrooms around themselves.
+(let-class Zoomshroom
+  (field minimushes)
+  (const minispace 0.1)
+
+  (init (me)
+    (= @minimushes (arr ..(map
+      (fn1 
+        (let minimush (spawn-instance 'Mushroom)
+             size (rand 0.3 0.4)
+             offset (rand-vec2 (* _ @minispace) (* (+ _ 1) @minispace)))
+        (= [offset 'y] (abs [offset 'y]))
+
+        (= [minimush 'pos] (.+ [me 'pos] offset))
+        (arr minimush size))
+      (rn (rand-select 1 2))))))
+
+  (meth update (me)
+    (= [me 'size] (+ 0.95 (abs (* (sin (time)) 0.03))))
+    (for (minimush size) in @minimushes
+      (= [minimush 'size] (+ size (abs (* (sin (time)) 0.025)))))))
+
+(arr BugWander Inchworm Zoomshroom)
