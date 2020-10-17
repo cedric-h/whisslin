@@ -1,13 +1,14 @@
 use crate::{
     combat, draw,
     phys::{self, PhysHandle},
-    world,
+    world::{self, script},
 };
 use std::fmt;
 
 pub(super) fn spawn_comps(
     ecs: &mut hecs::World,
     phys: &mut phys::CollisionWorld,
+    tag_bank: &mut script::TagBank,
     draw_config: &draw::Config,
     prefab: impl Iterator<Item = Comp>,
 ) -> hecs::Entity {
@@ -17,6 +18,7 @@ pub(super) fn spawn_comps(
 
     let mut pm = PhysMake::default();
     let mut script_name: Option<String> = Default::default();
+    let mut tags = vec![];
     let mut art = None;
     let mut z_offset = None;
 
@@ -27,6 +29,7 @@ pub(super) fn spawn_comps(
             DeathAnimation(ah) => {
                 b.add(draw::DeathAnimation::new(ah));
             }
+            Tags(t) => tags.extend(t),
             Health(amount) => {
                 b.add(combat::Health::new(amount));
             }
@@ -55,6 +58,8 @@ pub(super) fn spawn_comps(
             .needs_script
             .push((e, name));
     }
+
+    tag_bank.deposit(e, &tags);
 
     e
 }
@@ -126,6 +131,7 @@ pub enum Comp {
     Art(draw::ArtHandle),
     ZOffset(f32),
     DeathAnimation(draw::ArtHandle),
+    Tags(Vec<(String, String)>),
     Health(usize),
     Position(na::Vector2<f32>),
     Angle(f32),
@@ -148,6 +154,7 @@ impl Comp {
             Art(_) => "Art",
             ZOffset(_) => "Z Offset",
             DeathAnimation(_) => "Death Animation",
+            Tags(_) => "Tags",
             Health(_) => "Health",
             Position(_) => "Position",
             Angle(_) => "Angle",
@@ -178,6 +185,35 @@ impl Comp {
                     dirty = true;
                 }
                 *hp_u = hp as usize;
+            }
+            Tags(tags) => {
+                let mut i = 0;
+                tags.drain_filter(|(tag, val)| {
+                    i += 1;
+                    ui.horizontal(|ui| {
+                        let tag_len_before = tag.len();
+                        let tag_focus =
+                            ui.add(egui::TextEdit::new(tag).id((i, "tag"))).has_kb_focus;
+                        if tag_focus && tag_len_before != tag.len() {
+                            dirty = true;
+                        }
+
+                        let val_len_before = val.len();
+                        let val_focus =
+                            ui.add(egui::TextEdit::new(val).id((i, "val"))).has_kb_focus;
+                        if val_focus && val_len_before != val.len() {
+                            dirty = true;
+                        }
+
+                        macroquad::is_key_pressed(macroquad::KeyCode::Backspace)
+                            && tag_len_before == 0
+                    })
+                    .0
+                });
+
+                if ui.button("Add Tag").clicked {
+                    tags.push(("Example".to_string(), String::new()));
+                }
             }
             Position(p) => {
                 ui.horizontal(|ui| {
@@ -236,6 +272,7 @@ impl Comp {
                 Art(draw::ArtHandle::new_unchecked(0)),
                 ZOffset(0.0),
                 DeathAnimation(draw::ArtHandle::new_unchecked(0)),
+                Tags(vec![]),
                 Health(1),
                 Position(na::zero()),
                 Angle(0.0),

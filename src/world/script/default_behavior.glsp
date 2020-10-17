@@ -1,4 +1,2 @@
 (defclass DefaultBehavior
-    (meth update (_) no-op)
-    (meth die (_) no-op)
     (init (_) no-op))

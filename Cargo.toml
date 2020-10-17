@@ -31,6 +31,7 @@ ncollide2d = "0.24.0"
 na = { package = "nalgebra", version = "0.22.0", default-features = false, features = ["serde-serialize"] }
 
 # storage
+smallvec = "1.4.2"
 fxhash = "0.2.1"
 ron = "0.6.2"
 slotmap = { version = "0.4.0", features = ["serde", "unstable"] }

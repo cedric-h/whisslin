@@ -6,7 +6,7 @@
         border_color: (29, 185, 88, 255),
         tiles: {
             (0, 0): (),
-            (-1, -4): (),
+            (17, -18): (),
             (-1, 0): (),
             (22, -9): (),
             (20, -15): (),
@@ -361,7 +361,7 @@
             (9, -12): (),
             (11, -4): (),
             (15, -2): (),
-            (17, -18): (),
+            (-1, -4): (),
         },
         art_handle: 4,
     ),
@@ -431,7 +431,7 @@
             ),
             (
                 file: "target frames/spritesheet.png",
-                scale: 0.0025,
+                scale: 0.004,
                 spritesheet: Some((
                     rows: 4,
                     columns: 4,
@@ -523,8 +523,15 @@
                 scale: 0.0035,
             ),
             (
-                file: "atmosphere/sunflower.png",
+                file: "atmosphere/sunflower/spritesheet.png",
                 scale: 0.0025,
+                spritesheet: Some((
+                    rows: 3,
+                    columns: 4,
+                    total: 12,
+                    frame_rate: 3,
+                    hold_at: 0,
+                )),
             ),
             (
                 file: "atmosphere/log_bridge.png",
@@ -540,7 +547,11 @@
             ),
             (
                 file: "target.png",
-                scale: 0.0025,
+                scale: 0.004,
+            ),
+            (
+                file: "atmosphere/log_bridge_long.png",
+                scale: 0.0017,
             ),
         ],
     ),
@@ -751,10 +762,10 @@
                         version: 1,
                     ),
                     comps: [
-                        Angle(2.293),
+                        Angle(2.807),
                         Position([
-                            7.7699766,
-                            10.109631,
+                            4.0050836,
+                            9.871346,
                         ]),
                     ],
                 )),
@@ -784,10 +795,11 @@
                     ),
                     comps: [
                         Position([
-                            8.136815,
-                            1.615363,
+                            8.393868,
+                            10.624281,
                         ]),
                         Angle(0),
+                        Script("IntroTarget"),
                     ],
                 )),
                 version: 11,
@@ -811,18 +823,18 @@
             (
                 value: Some((
                     prefab_key: (
-                        idx: 10,
+                        idx: 2,
                         version: 1,
                     ),
                     comps: [
-                        Angle(0.471),
+                        Angle(0),
                         Position([
-                            5.3451943,
-                            1.6305203,
+                            3.5541883,
+                            0.6672528,
                         ]),
                     ],
                 )),
-                version: 9,
+                version: 11,
             ),
             (
                 value: Some((
@@ -831,30 +843,34 @@
                         version: 1,
                     ),
                     comps: [
-                        Angle(1.012),
+                        Angle(2.807),
                         Position([
-                            8.204607,
-                            3.971426,
+                            4.878793,
+                            12.841958,
                         ]),
                     ],
                 )),
-                version: 3,
+                version: 5,
             ),
             (
                 value: Some((
                     prefab_key: (
-                        idx: 10,
+                        idx: 14,
                         version: 1,
                     ),
                     comps: [
                         Position([
-                            4.163304,
-                            1.0128874,
+                            3.5508182,
+                            0.10619351,
                         ]),
-                        Angle(0.471),
+                        Angle(0.011),
+                        Script("FallingLog"),
+                        Tags([
+                            ("IntroLog", ""),
+                        ]),
                     ],
                 )),
-                version: 3,
+                version: 11,
             ),
             (
                 value: Some((
@@ -977,8 +993,8 @@
                     comps: [
                         Angle(0),
                         Position([
-                            0.7906037,
-                            -2.109704,
+                            0.80077034,
+                            -1.9927859,
                         ]),
                     ],
                 )),
@@ -1024,11 +1040,18 @@
                     ),
                     comps: [
                         Position([
-                            -1.7578158,
-                            -2.098645,
+                            8.20101,
+                            1.1292692,
                         ]),
                         Angle(0),
                         Script("Zoomshroom"),
+                        Hitbox([
+                            0.431,
+                            0.561,
+                        ]),
+                        Tags([
+                            ("ZoomshroomNetwork", "SmallIsland"),
+                        ]),
                     ],
                 )),
                 version: 3,
@@ -1945,6 +1968,262 @@
                 )),
                 version: 1,
             ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 9,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Script("Zoomshroom"),
+                        Hitbox([
+                            0.431,
+                            0.561,
+                        ]),
+                        Tags([
+                            ("ZoomshroomNetwork", "SmallIsland"),
+                        ]),
+                        Position([
+                            6.5438213,
+                            2.506871,
+                        ]),
+                    ],
+                )),
+                version: 3,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 1,
+                        version: 1,
+                    ),
+                    comps: [
+                        Position([
+                            5.423922,
+                            12.690449,
+                        ]),
+                        Angle(0),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 1,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            4.618297,
+                            12.927381,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 1,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            5.0267816,
+                            12.024619,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 1,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            4.8361535,
+                            12.436278,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 1,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Position([
+                            4.2128158,
+                            12.186575,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 9,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Script("Zoomshroom"),
+                        Hitbox([
+                            0.431,
+                            0.561,
+                        ]),
+                        Tags([
+                            ("ZoomshroomNetwork", "SmallIsland"),
+                        ]),
+                        Position([
+                            10.99688,
+                            4.7353053,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 9,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Script("Zoomshroom"),
+                        Hitbox([
+                            0.431,
+                            0.561,
+                        ]),
+                        Tags([
+                            ("ZoomshroomNetwork", "SmallIsland"),
+                        ]),
+                        Position([
+                            9.339691,
+                            6.1129074,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 9,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Script("Zoomshroom"),
+                        Hitbox([
+                            0.431,
+                            0.561,
+                        ]),
+                        Tags([
+                            ("ZoomshroomNetwork", "SmallIsland"),
+                        ]),
+                        Position([
+                            11.824496,
+                            6.1141973,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 9,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Script("Zoomshroom"),
+                        Hitbox([
+                            0.431,
+                            0.561,
+                        ]),
+                        Tags([
+                            ("ZoomshroomNetwork", "SmallIsland"),
+                        ]),
+                        Position([
+                            8.750534,
+                            7.438102,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 9,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(0),
+                        Script("Zoomshroom"),
+                        Hitbox([
+                            0.431,
+                            0.561,
+                        ]),
+                        Tags([
+                            ("ZoomshroomNetwork", "SmallIsland"),
+                        ]),
+                        Position([
+                            11.230082,
+                            8.114496,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 14,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(2.651),
+                        Position([
+                            8.125878,
+                            2.3301806,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    prefab_key: (
+                        idx: 14,
+                        version: 1,
+                    ),
+                    comps: [
+                        Angle(-2.4431853),
+                        Position([
+                            9.428501,
+                            9.288084,
+                        ]),
+                    ],
+                )),
+                version: 1,
+            ),
         ],
         fabs: [
             (
@@ -1966,10 +2245,10 @@
                             collision_static: None,
                             blacklist: [],
                             whitelist: [
-                                Enemy,
-                                Player,
                                 Weapon,
+                                Player,
                                 World,
+                                Enemy,
                             ],
                             membership: [
                                 World,
@@ -2110,6 +2389,7 @@
                     name: "Sunflower",
                     comps: [
                         Art(17),
+                        Script("BugSpawner"),
                         Collision((
                             collision_static: None,
                             blacklist: [],
@@ -2130,10 +2410,14 @@
                     comps: [
                         Art(16),
                         Collision((
-                            collision_static: None,
+                            collision_static: Some(()),
                             blacklist: [],
-                            whitelist: [],
-                            membership: [],
+                            whitelist: [
+                                Weapon,
+                            ],
+                            membership: [
+                                World,
+                            ],
                         )),
                         Hitbox([
                             0,
@@ -2149,10 +2433,12 @@
                     comps: [
                         Art(18),
                         Collision((
-                            collision_static: None,
+                            collision_static: Some(()),
                             blacklist: [],
                             whitelist: [],
-                            membership: [],
+                            membership: [
+                                World,
+                            ],
                         )),
                         Hitbox([
                             0,
@@ -2210,6 +2496,7 @@
                             collision_static: Some(()),
                             blacklist: [],
                             whitelist: [
+                                Weapon,
                                 Player,
                             ],
                             membership: [
@@ -2222,6 +2509,27 @@
                         ]),
                         Health(1),
                         DeathAnimation(6),
+                    ],
+                )),
+                version: 1,
+            ),
+            (
+                value: Some((
+                    name: "LogBridgeLong",
+                    comps: [
+                        Art(22),
+                        Collision((
+                            collision_static: Some(()),
+                            blacklist: [],
+                            whitelist: [],
+                            membership: [
+                                World,
+                            ],
+                        )),
+                        Hitbox([
+                            0.774,
+                            0.578,
+                        ]),
                     ],
                 )),
                 version: 1,

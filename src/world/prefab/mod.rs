@@ -137,18 +137,19 @@ pub fn overview_ui(
         };
     }
 
-    for (
-        prefab_key,
-        PrefabConfig {
+    let mut fab_keys: Vec<PrefabKey> = fabs.keys().collect();
+    fab_keys.sort_by_key(|&k| &fabs[k].name);
+
+    for prefab_key in fab_keys {
+        let PrefabConfig {
             name,
             comps,
             sure_delete,
             start_delete,
             dirty,
             generation,
-        },
-    ) in fabs.iter_mut()
-    {
+        } = &mut fabs[prefab_key];
+
         ui.collapsing(&*name, |ui| {
             if *dirty {
                 return;

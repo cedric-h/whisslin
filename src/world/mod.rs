@@ -33,7 +33,10 @@ pub struct Config {
     pub prefab: prefab::Config,
     #[cfg(feature = "confui")]
     #[serde(skip)]
-    pub prefab_expanded: bool,
+    pub prefabs_expanded: bool,
+    #[cfg(feature = "confui")]
+    #[serde(skip)]
+    pub instances_expanded: bool,
 }
 #[cfg(feature = "confui")]
 pub fn dev_ui(ui_plugin: &mut emigui_miniquad::UiPlugin, world: &mut Game) {
@@ -54,7 +57,8 @@ pub fn dev_ui(ui_plugin: &mut emigui_miniquad::UiPlugin, world: &mut Game) {
                 ui.checkbox("Tiling", &mut world.config.tile_expanded);
                 ui.checkbox("Draw", &mut world.config.draw_expanded);
                 ui.checkbox("Player", &mut world.config.player_expanded);
-                ui.checkbox("Prefabs", &mut world.config.prefab_expanded);
+                ui.checkbox("Prefabs", &mut world.config.prefabs_expanded);
+                ui.checkbox("Instances", &mut world.config.instances_expanded);
             });
         });
 
@@ -78,17 +82,17 @@ pub fn dev_ui(ui_plugin: &mut emigui_miniquad::UiPlugin, world: &mut Game) {
                 .show(ui.ctx(), |ui| world.config.player.dev_ui(ui));
         }
 
-        if world.config.prefab_expanded {
+        if world.config.prefabs_expanded {
             egui::Window::new("Prefabs")
                 .default_pos(egui::pos2(0.0, 200.0))
-                .show(ui.ctx(), |ui| {
-                    ui.collapsing("Instances", |ui| {
-                        prefab::instances::dev_ui(ui, world);
-                    });
+                .show(ui.ctx(), |ui| prefab::dev_ui(ui, &mut world.config));
+        }
 
-                    ui.collapsing("Prefabs", |ui| {
-                        prefab::dev_ui(ui, &mut world.config);
-                    });
+        if world.config.instances_expanded {
+            egui::Window::new("Instances")
+                .default_pos(egui::pos2(0.0, 250.0))
+                .show(ui.ctx(), |ui| {
+                    prefab::instances::dev_ui(ui, world);
                 });
         }
     });
@@ -131,7 +135,9 @@ impl World {
                 let (tx, rx) = channel();
                 let mut wat = watcher(tx, Duration::from_secs(1)).expect("couldn't make watcher");
                 wat.watch(
-                    concat!(env!("CARGO_MANIFEST_DIR", "./scripts")),
+                    std::env::current_dir()
+                        .expect("no current dir")
+                        .join("script"),
                     RecursiveMode::Recursive,
                 )
                 .expect("couldn't watch /scripts");
@@ -235,6 +241,7 @@ glsp::lib! {
         pub phys: CollisionWorld,
         pub config: Config,
         pub player: Player,
+        pub tag_bank: script::TagBank,
         pub images: draw::Images,
         pub draw_state: draw::DrawState,
         pub instance_tracker: prefab::InstanceTracker,
@@ -260,6 +267,7 @@ impl Game {
             map: Map::new(&config),
             l8r: L8r::new(),
             dead: Dead::new(),
+            tag_bank: script::TagBank::new(),
             images,
             draw_state: Default::default(),
             instance_tracker: Default::default(),
@@ -329,6 +337,8 @@ impl Game {
         draw::insert_ghosts(self);
         phys::collision::clear_dead_collision_objects(self);
         prefab::instances::clear_dead(self);
+
+        script::cleanup_tags(self);
 
         for entity in self.dead.marks.drain() {
             if let Err(err) = self.ecs.despawn(entity) {

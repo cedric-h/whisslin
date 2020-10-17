@@ -41,6 +41,7 @@ fn reset_ui(
     Game {
         ecs,
         phys,
+        tag_bank,
         instance_tracker: Tracker {
             resetting, spawned, ..
         },
@@ -64,7 +65,7 @@ fn reset_ui(
         if !spawned.iter().any(|t| ecs.contains(t.entity)) {
             spawned.clear();
             *resetting = false;
-            spawned.extend(prefab.spawn_all_config_instances(ecs, phys, draw));
+            spawned.extend(prefab.spawn_all_config_instances(ecs, phys, tag_bank, draw));
         }
     }
 }
@@ -195,6 +196,7 @@ fn recycle(
         ecs,
         phys,
         config: world::Config { prefab, draw, .. },
+        tag_bank,
         instance_tracker:
             Tracker {
                 recycle_bin,
@@ -212,7 +214,8 @@ fn recycle(
         {
             // in with the new!
             *tag = {
-                let mut new_tag = prefab.spawn_config_instance(ecs, phys, draw, *instance_key);
+                let mut new_tag =
+                    prefab.spawn_config_instance(ecs, phys, tag_bank, draw, *instance_key);
                 new_tag.generation = tag.generation;
                 new_tag.paste = tag.paste;
                 new_tag.selected = tag.selected;

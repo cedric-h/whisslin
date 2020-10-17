@@ -31,6 +31,7 @@ impl std::ops::DerefMut for RigidGroups {
 }
 
 /// Records all of the other entities this entity is touching
+#[derive(Debug)]
 pub struct Contacts {
     pub inner: FxHashSet<Entity>,
     force: na::Vector2<f32>,

@@ -1,11 +1,76 @@
 use super::Game;
-use crate::{draw, world};
+use crate::{draw, phys, world};
 use glsp::prelude::*;
 
 const DEFAULT_BEHAVIOR: &[u8] = compile!("src/world/script/default_behavior.glsp");
 
+/// Scripts use Tags to find specific entities.
+pub type TagEnts = smallvec::SmallVec<[(RRoot<Ent>, Option<Sym>); 64]>;
+pub type EntTags = smallvec::SmallVec<[(Sym, Option<Sym>); 64]>;
+pub struct TagBank {
+    tags: fxhash::FxHashMap<Sym, TagEnts>,
+    ents: fxhash::FxHashMap<hecs::Entity, EntTags>,
+}
+impl TagBank {
+    pub fn new() -> Self {
+        use {fxhash::FxBuildHasher, std::collections::HashMap};
+        Self {
+            tags: HashMap::with_capacity_and_hasher(1000, FxBuildHasher::default()),
+            ents: HashMap::with_capacity_and_hasher(1000, FxBuildHasher::default()),
+        }
+    }
+
+    pub fn deposit(&mut self, et: hecs::Entity, tags: &[(String, String)]) {
+        let ent = match glsp::rroot(Ent(et)) {
+            Ok(o) => o,
+            Err(e) => {
+                eprn!("Couldn't preallocate Ent for Tag: {}", e);
+                return;
+            }
+        };
+
+        for (strtag, strval) in tags {
+            macro_rules! symmify {
+                ( $s:ident ) => {
+                    match glsp::sym($s) {
+                        Ok(x) => x,
+                        Err(e) => {
+                            eprn!("Couldn't symmify {}: {}", $s, e);
+                            continue;
+                        }
+                    }
+                };
+            }
+
+            if strtag.len() == 0 {
+                continue;
+            }
+            let tag = symmify!(strtag);
+            let val = match strval.len() {
+                0 => None,
+                _ => Some(symmify!(strval)),
+            };
+
+            self.tags.entry(tag).or_default().push((ent.clone(), val));
+            self.ents.entry(et).or_default().push((tag, val));
+        }
+    }
+}
+
+pub fn cleanup_tags(Game { tag_bank, dead, .. }: &mut Game) {
+    let TagBank { ents, tags, .. } = tag_bank;
+
+    dead.marks()
+        .filter_map(|e| Some((e, ents.remove(&e)?)))
+        .flat_map(|(e, e_tags)| e_tags.into_iter().map(move |(e_tag, _)| (e, e_tag)))
+        .for_each(|(e, e_tag)| {
+            tags.get_mut(&e_tag)
+                .map(|t| t.retain(|(t, _)| t.borrow().0 != e));
+        })
+}
+
 rdata! {
-    #[derive(Copy, Clone, PartialEq)]
+    #[derive(Copy, Clone, PartialEq, Debug)]
     pub struct V2(pub f32, pub f32);
 
     meths {
@@ -19,6 +84,8 @@ rdata! {
         set "x": Self::set_x,
         "magn2": Self::magn2,
         "magn": Self::magn,
+        "lerp": Self::lerp,
+        "slerp": Self::slerp,
         "norm": Self::norm,
         "toward": Self::toward,
         "op-eq?": Self::op_eq,
@@ -74,6 +141,85 @@ impl V2 {
         self.1
     }
 
+    fn lerp(&mut self, Self(x2, y2): Self, tn: Num) -> Self {
+        let t = tn.into_f32();
+        let Self(x1, y1) = *self;
+        fn lerp(x: f32, y: f32, t: f32) -> f32 {
+            x + ((y - x) * t)
+        }
+        Self(lerp(x1, x2, t), lerp(y1, y2, t))
+    }
+
+    fn slerp(&self, q0: Self, tn: Num) -> Self {
+        const MU: f32 = 1.85298109240830;
+        const U: [f32; 8] = [
+            1.0 / (1.0 * 3.0),
+            1.0 / (2.0 * 5.0),
+            1.0 / (3.0 * 7.0),
+            1.0 / (4.0 * 9.0),
+            1.0 / (5.0 * 11.0),
+            1.0 / (6.0 * 13.0),
+            1.0 / (7.0 * 15.0),
+            MU / (8.0 * 17.0),
+        ];
+        const V: [f32; 8] = [
+            1.0 / 3.0,
+            2.0 / 5.0,
+            3.0 / 7.0,
+            4.0 / 9.0,
+            5.0 / 11.0,
+            6.0 / 13.0,
+            7.0 / 15.0,
+            MU * 8.0 / 17.0,
+        ];
+
+        let q1 = *self;
+        let t = tn.into_f32();
+        let xm1 = q0.dot(q1) - 1.0;
+        let d = 1.0 - t;
+        let t_pow2 = t * t;
+        let d_pow2 = d * d;
+
+        let mut ts = [0.0; 8];
+        let mut ds = [0.0; 8];
+        for i in (0..7).rev() {
+            ts[i] = (U[i] * t_pow2 - V[i]) * xm1;
+            ds[i] = (U[i] * d_pow2 - V[i]) * xm1;
+        }
+
+        let f0 = t
+            * (1.0
+                + ts[0]
+                    * (1.0
+                        + ts[1]
+                            * (1.0
+                                + ts[2]
+                                    * (1.0
+                                        + ts[3]
+                                            * (1.0
+                                                + ts[4]
+                                                    * (1.0
+                                                        + ts[5]
+                                                            * (1.0 + ts[6] * (1.0 + ts[7]))))))));
+
+        let f1 = d
+            * (1.0
+                + ds[0]
+                    * (1.0
+                        + ds[1]
+                            * (1.0
+                                + ds[2]
+                                    * (1.0
+                                        + ds[3]
+                                            * (1.0
+                                                + ds[4]
+                                                    * (1.0
+                                                        + ds[5]
+                                                            * (1.0 + ds[6] * (1.0 + ds[7]))))))));
+
+        q0.scale(f0).plus(q1.scale(f1))
+    }
+
     fn set_y(&mut self, x: Num) {
         self.1 = x.into_f32();
     }
@@ -106,6 +252,13 @@ impl V2 {
         Self(x1 - x2, y1 - y2)
     }
 
+    // more efficient euler subtraction,
+    // not exposed to glsp, used internally
+    fn plus(self, Self(x2, y2): Self) -> Self {
+        let Self(x1, y1) = self;
+        Self(x1 + x2, y1 + y2)
+    }
+
     fn norm(&self) -> V2 {
         self.scale(1.0 / self.magn())
     }
@@ -122,6 +275,47 @@ impl V2 {
 }
 
 fn prefablib() -> GResult<()> {
+    glsp::bind_rfn(
+        "ent-tagged",
+        rfn!(|tag: Sym| -> GResult<(RRoot<Ent>, Option<Sym>)> {
+            let Game { tag_bank, .. } = &mut *Game::borrow_mut();
+            let vault = tag_bank
+                .tags
+                .get(&tag)
+                .ok_or_else(|| error!("No such tag {}", tag))?;
+            match (vault.len(), vault.first()) {
+                (0, _) => bail!("No ents tagged {}", tag),
+                (1, Some(a)) => Ok(a.clone()),
+                _ => bail!("More than one ent tagged {}", tag),
+            }
+        }),
+    )?;
+    glsp::bind_rfn(
+        "all-tagged",
+        rfn!(|tag: Sym| -> GResult<Root<Arr>> {
+            let Game { tag_bank, .. } = &mut *Game::borrow_mut();
+            match tag_bank.tags.get(&tag) {
+                None => Ok(glsp::arr()),
+                Some(vault) => glsp::arr_from_iter(vault.clone().iter()),
+            }
+        }),
+    )?;
+    glsp::bind_rfn(
+        "all-tagged-with-val",
+        rfn!(|tag: Sym, val: Sym| -> GResult<Root<Arr>> {
+            let Game { tag_bank, .. } = &mut *Game::borrow_mut();
+            match tag_bank.tags.get(&tag) {
+                None => Ok(glsp::arr()),
+                Some(vault) => glsp::arr_from_iter(
+                    vault
+                        .clone()
+                        .iter()
+                        .filter(|(_, v)| *v == Some(val))
+                        .map(|(e, _)| e),
+                ),
+            }
+        }),
+    )?;
     glsp::bind_rfn(
         "instances-of",
         rfn!(|prefab_name: Sym| -> GResult<_> {
@@ -150,6 +344,7 @@ fn prefablib() -> GResult<()> {
                 ecs,
                 phys,
                 instance_tracker,
+                tag_bank,
                 config,
                 ..
             } = &mut *Game::borrow_mut();
@@ -159,13 +354,32 @@ fn prefablib() -> GResult<()> {
                 .ok_or_else(|| error!("no prefab with name {}", prefab_name))?;
 
             instance_tracker
-                .spawn_dynamic(ecs, phys, &config, pf_key, &vec![])
+                .spawn_dynamic(ecs, phys, tag_bank, &config, pf_key, &vec![])
                 .ent
                 .ok_or_else(|| error!("Couldn't get Ent for newly spawned Instance"))
         }),
     )?;
 
     Ok(())
+}
+
+#[test]
+fn slerp() {
+    use glam::Vec2;
+
+    let q0 = V2(0.0, 1.0);
+    let q1 = V2(1.0, 0.0);
+
+    assert_eq!(q0.slerp(q1, Num::Flo(0.0)), q0);
+    assert_eq!(q0.slerp(q1, Num::Flo(1.0)), q1);
+    let V2(x, y) = q1.slerp(q0, Num::Flo(0.5));
+    assert!(
+        Vec2::new(x, y).abs_diff_eq(Vec2::one().normalize(), 0.005,),
+        "Expected: ~({}, {}), got: {:?}",
+        x,
+        y,
+        Vec2::one().normalize()
+    );
 }
 
 rdata! {
@@ -179,16 +393,32 @@ rdata! {
         "move": Self::r#move,
         get "pos": Self::pos,
         set "pos": Self::set_pos,
+        get "rot": Self::rot,
+        set "rot": Self::set_rot,
+        get "force": Self::force,
+        set "force": Self::set_force,
         get "look-toward": Self::look_toward,
         set "look-toward": Self::set_look_toward,
         get "size": Self::size,
         set "size": Self::set_size,
         get "prefab": Self::prefab_name,
         get "anim-frame": Self::anim_frame,
+        "toggle-collision-whitelist": Self::toggle_collision_whitelist,
+        "tagval": Self::tagval,
+        "has-tag": Self::has_tag,
         "kill": Self::kill,
         "message": Self::message,
         "op-eq?": Self::op_eq
     }
+}
+
+macro_rules! collider {
+    ( $ecs:ident, $phys:ident, $($et:tt)* ) => {
+        $ecs.get($($et)*)
+            .ok()
+            .and_then(|h| $phys.get_mut(*h))
+            .ok_or_else(|| error!("This Entity has no position."))
+    };
 }
 
 impl Ent {
@@ -232,14 +462,62 @@ impl Ent {
     }
 
     fn pos(&self) -> GResult<V2> {
-        let Game { ecs, phys, .. } = &*glsp::lib();
+        let Game { ecs, phys, .. } = &mut *glsp::lib_mut();
+        let v = collider!(ecs, phys, self.0)?.position().translation.vector;
+        Ok(V2(v.x, v.y))
+    }
 
-        ecs.get(self.0)
-            .ok()
-            .and_then(|h| phys.collision_object(*h))
-            .map(|c| c.position().translation.vector)
-            .map(|v| V2(v.x, v.y))
-            .ok_or_else(|| error!("This Ent has no position"))
+    fn set_rot(&self, rot: f32) -> GResult<()> {
+        let Game { ecs, phys, .. } = &mut *glsp::lib_mut();
+        let c = collider!(ecs, phys, self.0)?;
+        let v = c.position().translation.vector;
+        c.set_position(na::Isometry2::new(v, rot));
+        Ok(())
+    }
+
+    fn rot(&self) -> GResult<f32> {
+        let Game { ecs, phys, .. } = &mut *glsp::lib_mut();
+        Ok(collider!(ecs, phys, self.0)?.position().rotation.angle())
+    }
+
+    fn toggle_collision_whitelist(
+        &self,
+        collide: phys::Collide,
+        desired_state: Option<bool>,
+    ) -> GResult<bool> {
+        let Game { ecs, phys, .. } = &mut *glsp::lib_mut();
+
+        let c = collider!(ecs, phys, self.0)?;
+        let mut groups = *c.collision_groups();
+        let state = desired_state.unwrap_or_else(|| !groups.is_member_of(collide as usize));
+        groups.modify_whitelist(collide as usize, state);
+        c.set_collision_groups(groups);
+
+        Ok(state)
+    }
+
+    fn force(&self) -> V2 {
+        let Game { ecs, .. } = &*glsp::lib();
+        let force = ecs.get::<phys::Force>(self.0);
+
+        match force {
+            Ok(f) => V2(f.vec.x, f.vec.y),
+            Err(_) => V2(0.0, 0.0),
+        }
+    }
+
+    fn set_force(&self, (V2(x, y), decay): (V2, f32)) -> GResult<()> {
+        let Game { ecs, .. } = &mut *glsp::lib_mut();
+
+        ecs.get_mut::<phys::Force>(self.0)
+            .map(|mut f| f.vec = na::Vector2::new(x, y))
+            .or_else(|_| {
+                ecs.insert_one(
+                    self.0,
+                    phys::Force::new_no_clear(na::Vector2::new(x, y), decay),
+                )
+                .map_err(|e| error!("Couldn't set force on Ent {:#?}: {}", self.0, e))
+            })
     }
 
     fn prefab<'a>(
@@ -340,6 +618,26 @@ impl Ent {
         Ok(af.current_frame(ss))
     }
 
+    fn tag(&self, tag: Sym) -> GResult<Option<Sym>> {
+        let Game { tag_bank, .. } = &*glsp::lib();
+        Ok(tag_bank
+            .ents
+            .get(&self.0)
+            .ok_or_else(|| error!("No tags for this Ent!"))?
+            .iter()
+            .find(|(t, _)| *t == tag)
+            .and_then(|(_, v)| v.clone()))
+    }
+
+    fn tagval(&self, tag: Sym) -> GResult<Sym> {
+        self.tag(tag)?
+            .ok_or_else(|| error!("Ent doesn't have this tag!"))
+    }
+
+    fn has_tag(&self, tag: Sym) -> GResult<bool> {
+        Ok(self.tag(tag)?.is_some())
+    }
+
     fn op_eq(&self, other: &Self) -> bool {
         self == other
     }
@@ -351,8 +649,8 @@ syms! {
         static_update: "static-update",
         collision: "collision",
         reload: "reload",
-        on_message: "on-message",
-        die: "die",
+        message: "message",
+        death: "death",
         init: "init",
     }
 }
@@ -386,25 +684,30 @@ fn class_name(class: &Root<Class>) -> String {
         .unwrap_or("Unknown".to_string())
 }
 
-fn log_meth_err(behavior: &Root<Obj>, meth: &Sym, r: GResult<Val>) {
-    if let Err(e) = r {
-        eprn!(
-            "Couldn't call {} method on {} class: {}",
-            meth,
-            class_name(&behavior.class()),
-            e
-        )
-    }
-}
-fn log_optional_meth_err(b: &Root<Obj>, m: &Sym, ro: GResult<Option<Val>>) {
-    if let Some(r) = ro.transpose() {
-        log_meth_err(b, m, r)
-    }
-}
-fn log_optional_static_err(class: &Root<Class>, meth: &Sym, r: GResult<Option<Val>>) {
-    if let Err(e) = r {
-        eprn!("Couldn't call {} on {}: {}", meth, class_name(class), e);
-    }
+/// Calls a Glsp object, logging failure to eprn if it occurs.
+macro_rules! call {
+    ( $class:ident :: $meth:ident $( . $rest:ident )* ( $($arg:tt)* ) ) => {
+        let meth = $meth$(.$rest )*;
+        call! { $class, meth, $class.call_if_present(meth, &($($arg)*)) }
+    };
+
+    ( $inst:ident . $meth:ident $( . $rest:ident )* ( $($arg:tt)* ) ) => {
+        let class = $inst.class();
+        let meth = $meth$(.$rest )*;
+        call! { class, meth, $inst.call_if_present(meth, &($($arg)*)) }
+    };
+
+    ( $class:ident, $meth:ident, $($ro:tt)* ) => {
+        let ro: GResult<Option<Val>> = $($ro)*;
+        if let Err(e) = ro {
+            eprn!(
+                "Couldn't call {} method on {} class: {}",
+                $meth,
+                class_name(&$class),
+                e
+            )
+        }
+    };
 }
 
 lib! {
@@ -428,6 +731,8 @@ lib! {
 impl Cache {
     pub fn new(classes: &Val) -> GResult<Self> {
         prefablib()?;
+        glsp::bind_global("pi", std::f32::consts::PI)?;
+        glsp::bind_rfn("lerp", rfn!(|x: Num, y: Num, t: Num| x + ((y - x) * t)))?;
         glsp::bind_rfn(
             "Vec2",
             rfn!(|x: Num, y: Num| V2(x.into_f32(), y.into_f32())),
@@ -512,11 +817,7 @@ impl Cache {
         } = self;
 
         for class in classes.iter() {
-            log_optional_static_err(
-                class,
-                &syms.static_update,
-                class.call_if_present(&syms.static_update, &()),
-            )
+            call! { class::syms.static_update() }
         }
 
         scripts.extend(needs_script.drain(..).filter_map(|(et, class_name)| {
@@ -534,30 +835,25 @@ impl Cache {
             let ent = &*ent;
 
             for (_, message) in messages.iter().filter(|&&(e, _)| e == hecs_entity) {
-                log_optional_meth_err(
-                    behavior,
-                    &syms.on_message,
-                    behavior.call_if_present(&syms.on_message, &(ent, message)),
-                );
+                call! { behavior.syms.message(ent, message) }
             }
 
             for (_, collided_with) in new_collisions.iter().filter(|&&(e1, _)| e1 == hecs_entity) {
-                log_optional_meth_err(
-                    behavior,
-                    &syms.collision,
-                    behavior
-                        .has_meth(&syms.collision)
-                        .and_then(|has_collision| {
-                            if has_collision {
-                                let cw = glsp::rroot(Ent(*collided_with))?;
-                                let _: Val = behavior.call(&syms.collision, &(ent, cw))?;
-                            }
-                            Ok(None)
-                        }),
-                );
+                let class = behavior.class();
+                let collision = &syms.collision;
+                let ro = behavior
+                    .has_meth(&syms.collision)
+                    .and_then(|has_collision| {
+                        if has_collision {
+                            let cw = glsp::rroot(Ent(*collided_with))?;
+                            let _: Val = behavior.call(&syms.collision, &(ent, cw))?;
+                        }
+                        Ok(None)
+                    });
+                call!(class, collision, ro);
             }
 
-            log_meth_err(behavior, &syms.update, behavior.call(&syms.update, &[ent]));
+            call! { behavior.syms.update(ent,) }
         }
 
         new_collisions.clear();
@@ -571,11 +867,8 @@ impl Cache {
         for (behavior, ent) in
             scripts.drain_filter(|(_, e)| Game::borrow_mut().dead.is_marked(e.borrow().0))
         {
-            log_optional_meth_err(
-                &behavior,
-                &syms.die,
-                behavior.call_if_present(&syms.die, &[&ent]),
-            );
+            call! { behavior.syms.death(&ent,) }
+
             if let Err(e) = behavior.kill().and_then(|_| ent.free()) {
                 eprn!(
                     "Couldn't kill {} behavior: {}",

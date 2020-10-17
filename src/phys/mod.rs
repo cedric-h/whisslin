@@ -5,6 +5,7 @@ pub type PhysHandle = ncollide2d::pipeline::CollisionObjectSlabHandle;
 pub use ncollide2d::{pipeline::CollisionGroups, shape::Cuboid};
 
 use crate::Game;
+use glsp::FromVal;
 
 /// Collision Group Constants
 #[derive(serde::Deserialize, serde::Serialize, Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -17,6 +18,20 @@ pub enum Collide {
     World,
     Creature,
 }
+impl FromVal for Collide {
+    fn from_val(val: &glsp::Val) -> glsp::GResult<Self> {
+        let sym = glsp::Sym::from_val(val)?;
+        Ok(match &*sym.name() {
+            "Player" => Self::Player,
+            "Weapon" => Self::Weapon,
+            "Enemy" => Self::Enemy,
+            "World" => Self::World,
+            "Creature" => Self::Creature,
+            _ => glsp::bail!("Not a valid Collision marker: {}", sym),
+        })
+    }
+}
+
 #[cfg(feature = "confui")]
 const ALL_COLLIDE: &[Collide] = {
     use Collide::*;
@@ -28,24 +43,30 @@ const ALL_COLLIDE: &[Collide] = {
 #[serde(deny_unknown_fields)]
 pub struct Collisionship {
     collision_static: Option<collision::CollisionStatic>,
+
     #[serde(default)]
-    blacklist: std::collections::HashSet<Collide>,
+    pub blacklist: std::collections::HashSet<Collide>,
+
     #[cfg(feature = "confui")]
     #[serde(skip)]
     adding_blacklist: Option<Collide>,
+
     #[serde(default)]
-    whitelist: std::collections::HashSet<Collide>,
+    pub whitelist: std::collections::HashSet<Collide>,
+
     #[cfg(feature = "confui")]
     #[serde(skip)]
     adding_whitelist: Option<Collide>,
+
     #[serde(default)]
-    membership: std::collections::HashSet<Collide>,
+    pub membership: std::collections::HashSet<Collide>,
+
     #[cfg(feature = "confui")]
     #[serde(skip)]
     adding_membership: Option<Collide>,
 }
-#[cfg(feature = "confui")]
 impl Collisionship {
+    #[cfg(feature = "confui")]
     /// Returns `true` if "dirty" i.e. meaningful outward-facing changes to the data occured.
     pub fn dev_ui(&mut self, ui: &mut egui::Ui) -> bool {
         let mut dirty = false;
@@ -126,6 +147,11 @@ impl Collisionship {
 
         dirty
     }
+
+    pub fn into_groups(self) -> CollisionGroups {
+        let (_, groups): (Option<collision::CollisionStatic>, CollisionGroups) = self.into();
+        groups
+    }
 }
 impl Into<(Option<collision::CollisionStatic>, CollisionGroups)> for Collisionship {
     fn into(self) -> (Option<collision::CollisionStatic>, CollisionGroups) {
@@ -154,7 +180,7 @@ pub fn phys_components(
     iso: na::Isometry2<f32>,
     cuboid: Cuboid<f32>,
     groups: CollisionGroups,
-) -> (collision::Contacts, PhysHandle) {
+) -> (PhysHandle, collision::Contacts) {
     let (h, _) = phys.add(
         iso,
         ncollide2d::shape::ShapeHandle::new(cuboid),
@@ -162,7 +188,7 @@ pub fn phys_components(
         ncollide2d::pipeline::GeometricQueryType::Contacts(0.0, 0.0),
         entity,
     );
-    (collision::Contacts::new(), h)
+    (h, collision::Contacts::new())
 }
 
 pub fn phys_insert(
@@ -173,11 +199,12 @@ pub fn phys_insert(
     cuboid: Cuboid<f32>,
     groups: CollisionGroups,
 ) -> PhysHandle {
-    let (contacts, h) = phys_components(phys, entity, iso, cuboid, groups);
-    ecs.insert(entity, (contacts, h)).unwrap_or_else(|e| {
+    let comps = phys_components(phys, entity, iso, cuboid, groups);
+    let h = comps.0;
+    ecs.insert(entity, comps).unwrap_or_else(|e| {
         panic!(
-            "Couldn't insert Contacts or PhysHandle[{:?}] for Entity[{:?}] when adding hitbox: {}",
-            h, entity, e
+            "Couldn't add comps for Entity[{:?}] for phys[handle: {:?}] insertion: {}",
+            entity, h, e
         )
     });
     h

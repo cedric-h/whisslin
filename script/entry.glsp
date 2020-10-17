@@ -1,3 +1,11 @@
+; Returns the Ent in the list closest to rel.
+; The first argument should be the position relative to which "closeness" is gauged.
+; The second argument is a list of entities from which to select the "closest"
+(let-fn closest-ent (rel ..ents)
+  (min-by-key
+    (fn1 (.magn2 (.- rel [_ 'pos])))
+    ..ents))
+
 (let-fn rand-vec2 (min-magn (? max-magn min-magn))
   (.* (.norm (Vec2 (rand -1.0 1.0) (rand -1.0 1.0)))
       (rand min-magn max-magn)))
@@ -56,13 +64,6 @@
     
     (= @last-time (time))))
 
-; Returns the Ent in the list closest to rel.
-; The first argument should be the position relative to which "closeness" is gauged.
-; The second argument is a list of entities from which to select the "closest"
-(let-fn closest-ent (rel ..ents)
-  (min-by-key
-    (fn1 (.magn2 (.- rel [_ 'pos])))
-    ..ents))
 
 (let-class Inchworm
   (field heading)
@@ -74,7 +75,7 @@
 
   ; Newly hatched Inchworms are told to flee,
   ; this prevents them from immediately eating their brethren
-  (meth on-message (ent (name ..rest))
+  (meth message (me (name ..rest))
     (match name
       ('flee (@enab! 'Flee ..rest))
       (other (bail "message unknown to inchworm: " other))))
@@ -154,6 +155,7 @@
             (()
               [@idle-goal 'pos]))))))))
 
+
 ; Zoomshrooms
 ; - teleport items thrown into them to other zoomshrooms,
 ; - "breathe", slightly changing in size
@@ -168,15 +170,163 @@
         (let minimush (spawn-instance 'Mushroom)
              size (rand 0.3 0.4)
              offset (rand-vec2 (* _ @minispace) (* (+ _ 1) @minispace)))
-        (= [offset 'y] (abs [offset 'y]))
+        (= [offset 'y] (+ (abs [offset 'y]) 0.3))
+        (= [offset 'x] (+ [offset 'x] (* _ (sign [offset 'x]) 0.04)))
 
         (= [minimush 'pos] (.+ [me 'pos] offset))
-        (arr minimush size))
+        (arr minimush size offset))
       (rn (rand-select 1 2))))))
 
   (meth update (me)
-    (= [me 'size] (+ 0.95 (abs (* (sin (time)) 0.03))))
-    (for (minimush size) in @minimushes
-      (= [minimush 'size] (+ size (abs (* (sin (time)) 0.025)))))))
+    (@breathe me))
 
-(arr BugWander Inchworm Zoomshroom)
+  (meth collision (me teleportee)
+    (when (not (@enab? 'Teleporting))
+      (@enab! 'Teleporting me teleportee)))
+
+  (meth reload (me new-class)
+    (for (minimush _ _) in @minimushes
+      (.kill minimush))
+    (new-class me))
+
+  (const default-breathe-size 0.03)
+  (const default-breathe-child-scale 0.8)
+  (const default-breathe-speed 1.0)
+  (meth breathe (me
+      (? size @default-breathe-size)
+      (? child-scale @default-breathe-child-scale)
+      (? speed @default-breathe-speed))
+    (let scale (abs (* (sin (* (time) speed)) size)))
+    (= [me 'size] (+ (- 1.0 size) scale))
+    (for (minimush size _) in @minimushes
+      (= [minimush 'size] (+ size (* scale child-scale)))))
+
+  (meth message (me (name ..rest))
+    (match name
+      ('teleport (when (not (@enab? 'Teleporting)) (@enab! 'Teleporting me ..rest)))
+      (other (bail "message unknown to Zoomshroom: " other))))
+
+  ; The eldritch, quick, powerful scaling the Zoomshrooms exhibit when teleporting an object
+  (state Teleporting
+    (field start)
+    (field start-pos)
+    (field teleportee)
+    (field duration)
+    (field end-shroom)
+
+    (init-state (me @teleportee)
+      (let subnet (.tagval me 'ZoomshroomNetwork)
+           network
+             (filter (fn1 (not (eq? _ me )))
+                     (all-tagged-with-val 'ZoomshroomNetwork subnet)))
+      (= @start (time)
+         @start-pos [me 'pos]
+         [@teleportee 'force] (arr (Vec2 0 0) 1.0)
+         @end-shroom (rand-select ..network)
+         @duration (+ 1.0 (/ 0.8 (.magn (.- [me 'pos] [@end-shroom 'pos]))))))
+
+    (wrap Main:update (me)
+      (= [me 'pos] (.- @start-pos (Vec2 0 (abs (* (sin (* (time) 10)) 0.075)))))
+      (let elapsed (- (time) @start)
+           time-left (- @duration elapsed)
+           tn (cond ((< time-left 0.5) (/ time-left 0.5))
+                    ((< elapsed 0.5) (/ elapsed 0.5))
+                    (else 1.0))
+
+           teleportee-offset
+             (if (> elapsed 0.5)
+               (.- (.lerp @start-pos
+                          [@end-shroom 'pos]
+                          (smoothstep (/ (- elapsed 0.5) (- @duration 0.5))))
+                   @start-pos)
+               (Vec2 0.0 0.0)))
+
+      (= [@teleportee 'pos] (.+ teleportee-offset
+                                [me 'pos]
+                                (Vec2 0.0 (- -0.25 (* 0.15 [me 'size])))))
+
+      (for (minimush size offset) in @minimushes
+        (let m (.magn offset)
+             vt (* 4 (sin (* (+ (time) m) 5)))
+             v (.* (Vec2 (cos vt) (sin vt)) (+ m (* (sin (time)) 0.025)))
+             normal-pos (.+ @start-pos offset))
+        (= [minimush 'pos] (.+ @start-pos v))
+        (when (> elapsed @duration)
+          (= [minimush 'pos] normal-pos))
+        (= [minimush 'pos] (.lerp normal-pos [minimush 'pos] tn)))
+
+      (= [me 'pos] (.lerp @start-pos [me 'pos] tn))
+      (let scale (lerp
+        (abs (* (sin (* (time) @default-breathe-speed)) @default-breathe-size))
+        (abs (* (sin (* (time) 5.0)) 0.32))
+        tn))
+      (= [me 'size] (+ (- 1.0 (lerp @default-breathe-size 0.32 tn)) scale))
+      (for (minimush size _) in @minimushes
+        (= [minimush 'size] (+ size (* scale (lerp @default-breathe-child-scale 0.24 tn)))))
+
+      (when (> elapsed @duration)
+        (= [me 'pos] @start-pos)
+        (.message @end-shroom (arr 'teleport @teleportee))
+        (@breathe me)
+        (@disab! 'Teleporting)
+        (return))
+    )))
+
+
+; BugSpawners spawn a random bug at their location upon initialization.
+(let-class BugSpawner
+  (field bug)
+
+  (init (me)
+    (= @bug (spawn-instance (rand-select 'Inchworm 'Butterfly 'Bee))
+       [@bug 'pos] [me 'pos]))
+
+  (meth reload (me new-class)
+    (.kill @bug)
+    (new-class me)))
+
+
+; Tells the log to fall when it breaks.
+(let-class IntroTarget
+  (init (me))
+
+  (meth death (me)
+    (let (log, _) (ent-tagged 'IntroLog))
+    (.message log (arr 'fall (.norm (Vec2 1.0 -0.05)) 5.0))))
+
+
+(let-fn angle-vec2 (angle)
+  (let a (- angle (/ pi 4)))
+  (Vec2 (cos a) (sin a)))
+
+(let-fn vec2-angle (v)
+  (+ (/ pi 4) (atan [v 'y] [v 'x])))
+
+; Falls gradually when it's told to.
+(let-class FallingLog
+  (init (me)
+    (.toggle-collision-whitelist me 'Player #t))
+
+  (meth message (me (name ..rest))
+    (match name
+      ('fall (@enab! 'Falling me ..rest))
+      (other (bail "message unknown to intro log: " other))))
+
+  (state Falling
+    (field start-rotv)
+    (field end-rotv)
+    (field duration)
+    (field start)
+
+    (init-state (me @end-rotv @duration)
+      (= @start-rotv (angle-vec2 [me 'rot])
+         @start (time)))
+
+    (meth update (me)
+      (let elapsed (- (time) @start)
+           t (/ elapsed @duration))
+      (prn t)
+      (= [me 'rot] (vec2-angle (.slerp @start-rotv @end-rotv t))))))
+
+
+(arr BugWander Inchworm Zoomshroom BugSpawner IntroTarget FallingLog)

@@ -1,5 +1,9 @@
 use super::{comp::spawn_comps, Comp, Config, InstanceConfig, InstanceKey, PrefabKey};
-use crate::{draw, phys, world, Game};
+use crate::{
+    draw, phys,
+    world::{self, script},
+    Game,
+};
 
 mod tracker;
 pub use tracker::{InstanceSource, Tag, Tracker};
@@ -10,17 +14,19 @@ impl Config {
         &'a self,
         ecs: &'a mut hecs::World,
         phys: &'a mut phys::CollisionWorld,
+        tag_bank: &'a mut script::TagBank,
         draw_config: &'a draw::Config,
     ) -> impl ExactSizeIterator<Item = Tag> + 'a {
         self.instances
             .iter()
-            .map(move |(k, _)| self.spawn_config_instance(ecs, phys, draw_config, k))
+            .map(move |(k, _)| self.spawn_config_instance(ecs, phys, tag_bank, draw_config, k))
     }
 
     fn spawn_config_instance(
         &self,
         ecs: &mut hecs::World,
         phys: &mut phys::CollisionWorld,
+        tag_bank: &mut script::TagBank,
         draw_config: &draw::Config,
         instance_key: InstanceKey,
     ) -> Tag {
@@ -31,6 +37,7 @@ impl Config {
         self.spawn_instance(
             ecs,
             phys,
+            tag_bank,
             draw_config,
             prefab_key,
             comps,
@@ -42,6 +49,7 @@ impl Config {
         &self,
         ecs: &mut hecs::World,
         phys: &mut phys::CollisionWorld,
+        tag_bank: &mut script::TagBank,
         draw_config: &draw::Config,
         prefab_key: PrefabKey,
         comps: &[Comp],
@@ -50,11 +58,9 @@ impl Config {
         let entity = spawn_comps(
             ecs,
             phys,
+            tag_bank,
             draw_config,
-            comps
-                .iter()
-                .chain(self.fabs[prefab_key].comps.iter())
-                .cloned(),
+            self.fabs[prefab_key].comps.iter().chain(comps).cloned(),
         );
         Tag::new(prefab_key, source, entity)
     }
@@ -124,6 +130,7 @@ pub fn dev_ui(ui: &mut egui::Ui, world: &mut Game) -> Option<()> {
                 ecs,
                 phys,
                 player,
+                tag_bank,
                 config: crate::world::Config { prefab, .. },
                 ..
             } = world;
@@ -168,6 +175,7 @@ pub fn dev_ui(ui: &mut egui::Ui, world: &mut Game) -> Option<()> {
                     .push(prefab.spawn_config_instance(
                         ecs,
                         phys,
+                        tag_bank,
                         &world.config.draw,
                         instance_key,
                     ));
@@ -206,6 +214,7 @@ pub fn keep_fresh(
         dead,
         ecs,
         phys,
+        tag_bank,
         instance_tracker,
         config,
         ..
@@ -235,6 +244,7 @@ pub fn keep_fresh(
                         *t = config.prefab.spawn_config_instance(
                             ecs,
                             phys,
+                            tag_bank,
                             &config.draw,
                             instance_key,
                         );
@@ -254,11 +264,12 @@ pub fn spawn_all_instances(
         phys,
         ecs,
         instance_tracker,
+        tag_bank,
         config: world::Config { draw, prefab, .. },
         ..
     }: &mut Game,
 ) {
     instance_tracker
         .spawned
-        .extend(prefab.spawn_all_config_instances(ecs, phys, draw));
+        .extend(prefab.spawn_all_config_instances(ecs, phys, tag_bank, draw));
 }

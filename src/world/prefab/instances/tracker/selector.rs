@@ -100,6 +100,7 @@ impl Action {
             phys,
             config: world::Config { draw, prefab, .. },
             dead,
+            tag_bank,
             instance_tracker: Tracker { spawned, .. },
             ..
         } = game;
@@ -198,7 +199,7 @@ impl Action {
                 Back => {
                     for (_, instance_config) in delets {
                         let ik = prefab.instances.insert(instance_config.clone());
-                        spawned.push(prefab.spawn_config_instance(ecs, phys, draw, ik));
+                        spawned.push(prefab.spawn_config_instance(ecs, phys, tag_bank, draw, ik));
                     }
                 }
             },
@@ -224,7 +225,7 @@ impl Action {
                             }));
                             inst
                         });
-                        let mut tag = prefab.spawn_config_instance(ecs, phys, draw, ik);
+                        let mut tag = prefab.spawn_config_instance(ecs, phys, tag_bank, draw, ik);
                         tag.selected = true;
                         tag.paste = Some(*id);
                         tag

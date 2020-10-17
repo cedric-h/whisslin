@@ -179,11 +179,11 @@ impl Images {
     pub async fn load(config: &world::Config) -> Self {
         let mut images = Vec::with_capacity(config.draw.art.len());
 
-        clear_background(WHITE);
+        clear_background(BLACK);
         draw_text("LOADING", 0.0, 0.0, 20.0, BLACK);
         next_frame().await;
         for (i, name) in config.draw.art.iter().enumerate() {
-            clear_background(WHITE);
+            clear_background(BLACK);
 
             draw_text(
                 &format!(
@@ -195,7 +195,7 @@ impl Images {
                 0.0,
                 0.0,
                 20.0,
-                BLACK,
+                WHITE,
             );
             draw_text(&name.file, 20.0, 20.0, 20.0, DARKGRAY);
             images.push(load_texture(&format!("art/{}", name.file)).await);

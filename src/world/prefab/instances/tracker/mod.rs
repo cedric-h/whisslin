@@ -1,7 +1,10 @@
 #[cfg(feature = "confui")]
 use super::Popup;
 use super::{Comp, InstanceConfig, InstanceKey, PrefabKey};
-use crate::{phys, world};
+use crate::{
+    phys,
+    world::{self, script},
+};
 use glam::Vec2;
 
 #[cfg(feature = "confui")]
@@ -39,10 +42,12 @@ pub struct Tracker {
 }
 
 impl Tracker {
+    #[cfg(feature = "confui")]
     pub fn selected(&self) -> impl Iterator<Item = &Tag> {
         self.spawned.iter().filter(|t| t.selected)
     }
 
+    #[cfg(feature = "confui")]
     pub fn selected_mut(&mut self) -> impl Iterator<Item = &mut Tag> {
         self.spawned.iter_mut().filter(|t| t.selected)
     }
@@ -62,6 +67,7 @@ impl Tracker {
         &mut self,
         ecs: &mut hecs::World,
         phys: &mut phys::CollisionWorld,
+        tag_bank: &mut script::TagBank,
         config: &world::Config,
         pf_key: PrefabKey,
         comps: &[Comp],
@@ -69,6 +75,7 @@ impl Tracker {
         let tag = config.prefab.spawn_instance(
             ecs,
             phys,
+            tag_bank,
             &config.draw,
             pf_key,
             comps,
