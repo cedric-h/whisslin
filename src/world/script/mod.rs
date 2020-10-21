@@ -5,8 +5,8 @@ use glsp::prelude::*;
 const DEFAULT_BEHAVIOR: &[u8] = compile!("src/world/script/default_behavior.glsp");
 
 /// Scripts use Tags to find specific entities.
-pub type TagEnts = smallvec::SmallVec<[(RRoot<Ent>, Option<Sym>); 64]>;
-pub type EntTags = smallvec::SmallVec<[(Sym, Option<Sym>); 64]>;
+pub type TagEnts = smallvec::SmallVec<[(RRoot<Ent>, Val); 64]>;
+pub type EntTags = smallvec::SmallVec<[(Sym, Val); 64]>;
 pub struct TagBank {
     tags: fxhash::FxHashMap<Sym, TagEnts>,
     ents: fxhash::FxHashMap<hecs::Entity, EntTags>,
@@ -20,7 +20,7 @@ impl TagBank {
         }
     }
 
-    pub fn deposit(&mut self, et: hecs::Entity, tags: &[(String, String)]) {
+    pub fn deposit(&mut self, et: hecs::Entity, tags: impl Iterator<Item = (Sym, Val)>) {
         let ent = match glsp::rroot(Ent(et)) {
             Ok(o) => o,
             Err(e) => {
@@ -29,29 +29,8 @@ impl TagBank {
             }
         };
 
-        for (strtag, strval) in tags {
-            macro_rules! symmify {
-                ( $s:ident ) => {
-                    match glsp::sym($s) {
-                        Ok(x) => x,
-                        Err(e) => {
-                            eprn!("Couldn't symmify {}: {}", $s, e);
-                            continue;
-                        }
-                    }
-                };
-            }
-
-            if strtag.len() == 0 {
-                continue;
-            }
-            let tag = symmify!(strtag);
-            let val = match strval.len() {
-                0 => None,
-                _ => Some(symmify!(strval)),
-            };
-
-            self.tags.entry(tag).or_default().push((ent.clone(), val));
+        for (tag, val) in tags {
+            self.tags.entry(tag).or_default().push((ent.clone(), val.clone()));
             self.ents.entry(et).or_default().push((tag, val));
         }
     }
@@ -277,7 +256,7 @@ impl V2 {
 fn prefablib() -> GResult<()> {
     glsp::bind_rfn(
         "ent-tagged",
-        rfn!(|tag: Sym| -> GResult<(RRoot<Ent>, Option<Sym>)> {
+        rfn!(|tag: Sym| -> GResult<(RRoot<Ent>, Val)> {
             let Game { tag_bank, .. } = &mut *Game::borrow_mut();
             let vault = tag_bank
                 .tags
@@ -302,7 +281,7 @@ fn prefablib() -> GResult<()> {
     )?;
     glsp::bind_rfn(
         "all-tagged-with-val",
-        rfn!(|tag: Sym, val: Sym| -> GResult<Root<Arr>> {
+        rfn!(|tag: Sym, val: Val| -> GResult<Root<Arr>> {
             let Game { tag_bank, .. } = &mut *Game::borrow_mut();
             match tag_bank.tags.get(&tag) {
                 None => Ok(glsp::arr()),
@@ -310,7 +289,7 @@ fn prefablib() -> GResult<()> {
                     vault
                         .clone()
                         .iter()
-                        .filter(|(_, v)| *v == Some(val))
+                        .filter(|(_, v)| v.eq(&val))
                         .map(|(e, _)| e),
                 ),
             }
@@ -618,7 +597,7 @@ impl Ent {
         Ok(af.current_frame(ss))
     }
 
-    fn tag(&self, tag: Sym) -> GResult<Option<Sym>> {
+    fn tag(&self, tag: Sym) -> GResult<Option<Val>> {
         let Game { tag_bank, .. } = &*glsp::lib();
         Ok(tag_bank
             .ents
@@ -626,10 +605,10 @@ impl Ent {
             .ok_or_else(|| error!("No tags for this Ent!"))?
             .iter()
             .find(|(t, _)| *t == tag)
-            .and_then(|(_, v)| v.clone()))
+            .map(|(_, v)| v.clone()))
     }
 
-    fn tagval(&self, tag: Sym) -> GResult<Sym> {
+    fn tagval(&self, tag: Sym) -> GResult<Val> {
         self.tag(tag)?
             .ok_or_else(|| error!("Ent doesn't have this tag!"))
     }

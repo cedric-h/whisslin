@@ -1,6 +1,6 @@
 use crate::{
     phys::{self, PhysHandle},
-    world, Game,
+    Game,
 };
 use macroquad::{drawing::Texture2D, *};
 use ncollide2d::shape::Cuboid;
@@ -176,21 +176,21 @@ pub struct Images {
     images: Vec<Texture2D>,
 }
 impl Images {
-    pub async fn load(config: &world::Config) -> Self {
-        let mut images = Vec::with_capacity(config.draw.art.len());
+    pub async fn load(draw: &Config) -> Self {
+        let mut images = Vec::with_capacity(draw.art.len());
 
         clear_background(BLACK);
         draw_text("LOADING", 0.0, 0.0, 20.0, BLACK);
         next_frame().await;
-        for (i, name) in config.draw.art.iter().enumerate() {
+        for (i, name) in draw.art.iter().enumerate() {
             clear_background(BLACK);
 
             draw_text(
                 &format!(
                     "LOADING {}/{} ({:.3}%)",
                     i,
-                    config.draw.art.len(),
-                    (i as f32 / config.draw.art.len() as f32) * 100.0
+                    draw.art.len(),
+                    (i as f32 / draw.art.len() as f32) * 100.0
                 ),
                 0.0,
                 0.0,

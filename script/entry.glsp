@@ -161,6 +161,7 @@
 ; - "breathe", slightly changing in size
 ; - spawn smaller, non-teleportational shrooms around themselves.
 (let-class Zoomshroom
+  (field pending-mushes (arr))
   (field minimushes)
   (const minispace 0.1)
 
@@ -174,15 +175,19 @@
         (= [offset 'x] (+ [offset 'x] (* _ (sign [offset 'x]) 0.04)))
 
         (= [minimush 'pos] (.+ [me 'pos] offset))
+        (= [minimush 'size] size)
         (arr minimush size offset))
-      (rn (rand-select 1 2))))))
+      (rn (.tagval me 'MinimushCount))))))
 
   (meth update (me)
-    (@breathe me))
+    (when (not (empty? @pending-mushes))
+      (push! @minimushes ..@pending-mushes)
+      (clear! @pending-mushes))
 
-  (meth collision (me teleportee)
-    (when (not (@enab? 'Teleporting))
-      (@enab! 'Teleporting me teleportee)))
+    (when (> (len @minimushes) 1)
+      (@enab! 'Teleporting me (pop! @minimushes))
+      (return))
+    (@breathe me))
 
   (meth reload (me new-class)
     (for (minimush _ _) in @minimushes
@@ -203,47 +208,53 @@
 
   (meth message (me (name ..rest))
     (match name
-      ('teleport (when (not (@enab? 'Teleporting)) (@enab! 'Teleporting me ..rest)))
+      ('take-minimush (push! @pending-mushes ..rest))
       (other (bail "message unknown to Zoomshroom: " other))))
 
   ; The eldritch, quick, powerful scaling the Zoomshrooms exhibit when teleporting an object
   (state Teleporting
     (field start)
     (field start-pos)
-    (field teleportee)
+    (field mini-start-pos)
+    (field minimush)
     (field duration)
     (field end-shroom)
 
-    (init-state (me @teleportee)
+    (init-state (me @minimush)
       (let subnet (.tagval me 'ZoomshroomNetwork)
            network
              (filter (fn1 (not (eq? _ me )))
                      (all-tagged-with-val 'ZoomshroomNetwork subnet)))
       (= @start (time)
+         @mini-start-pos [[@minimush 0] 'pos]
          @start-pos [me 'pos]
-         [@teleportee 'force] (arr (Vec2 0 0) 1.0)
          @end-shroom (rand-select ..network)
-         @duration (+ 1.0 (/ 0.8 (.magn (.- [me 'pos] [@end-shroom 'pos]))))))
+         @duration (+ 1.0 (/ (.magn (.- [me 'pos] [@end-shroom 'pos])) 0.8))))
+
+    (wrap Main:reload (me new-class)
+      (.kill [@minimush 0])
+      (@base me new-class))
 
     (wrap Main:update (me)
+      (let (mini-ent, _, mini-offset) @minimush)
+
       (= [me 'pos] (.- @start-pos (Vec2 0 (abs (* (sin (* (time) 10)) 0.075)))))
       (let elapsed (- (time) @start)
            time-left (- @duration elapsed)
            tn (cond ((< time-left 0.5) (/ time-left 0.5))
                     ((< elapsed 0.5) (/ elapsed 0.5))
                     (else 1.0))
+           mini-ent-offset
+             (.+ (.lerp @start-pos
+                        [@end-shroom 'pos]
+                        (smoothstep (/ (- elapsed 0.5) (- @duration 0.5))))
+                 (.- @start-pos)
+                 (Vec2 0.0 (- -0.25 (* 0.15 [me 'size])))
+                 [me 'pos]))
 
-           teleportee-offset
-             (if (> elapsed 0.5)
-               (.- (.lerp @start-pos
-                          [@end-shroom 'pos]
-                          (smoothstep (/ (- elapsed 0.5) (- @duration 0.5))))
-                   @start-pos)
-               (Vec2 0.0 0.0)))
-
-      (= [@teleportee 'pos] (.+ teleportee-offset
-                                [me 'pos]
-                                (Vec2 0.0 (- -0.25 (* 0.15 [me 'size])))))
+      (= [mini-ent 'pos] (if (> elapsed 0.5)
+                             mini-ent-offset
+                             (.lerp @mini-start-pos mini-ent-offset (/ elapsed 0.5))))
 
       (for (minimush size offset) in @minimushes
         (let m (.magn offset)
@@ -266,7 +277,7 @@
 
       (when (> elapsed @duration)
         (= [me 'pos] @start-pos)
-        (.message @end-shroom (arr 'teleport @teleportee))
+        (.message @end-shroom (arr 'take-minimush @minimush))
         (@breathe me)
         (@disab! 'Teleporting)
         (return))
@@ -284,15 +295,6 @@
   (meth reload (me new-class)
     (.kill @bug)
     (new-class me)))
-
-
-; Tells the log to fall when it breaks.
-(let-class IntroTarget
-  (init (me))
-
-  (meth death (me)
-    (let (log, _) (ent-tagged 'IntroLog))
-    (.message log (arr 'fall (.norm (Vec2 1.0 -0.05)) 5.0))))
 
 
 (let-fn angle-vec2 (angle)
@@ -329,4 +331,4 @@
       (= [me 'rot] (vec2-angle (.slerp @start-rotv @end-rotv t))))))
 
 
-(arr BugWander Inchworm Zoomshroom BugSpawner IntroTarget FallingLog)
+(arr BugWander Inchworm Zoomshroom BugSpawner FallingLog)

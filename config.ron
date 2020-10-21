@@ -360,8 +360,8 @@
             (23, -8): (),
             (9, -12): (),
             (11, -4): (),
-            (15, -2): (),
             (-1, -4): (),
+            (15, -2): (),
         },
         art_handle: 4,
     ),
@@ -799,7 +799,6 @@
                             10.624281,
                         ]),
                         Angle(0),
-                        Script("IntroTarget"),
                     ],
                 )),
                 version: 11,
@@ -866,7 +865,10 @@
                         Angle(0.011),
                         Script("FallingLog"),
                         Tags([
-                            ("IntroLog", ""),
+                            (
+                                tag: "IntroLog",
+                                val: "#n",
+                            ),
                         ]),
                     ],
                 )),
@@ -1050,7 +1052,14 @@
                             0.561,
                         ]),
                         Tags([
-                            ("ZoomshroomNetwork", "SmallIsland"),
+                            (
+                                tag: "ZoomshroomNetwork",
+                                val: "FirstIsland",
+                            ),
+                            (
+                                tag: "MinimushCount",
+                                val: "1",
+                            ),
                         ]),
                     ],
                 )),
@@ -1982,7 +1991,14 @@
                             0.561,
                         ]),
                         Tags([
-                            ("ZoomshroomNetwork", "SmallIsland"),
+                            (
+                                tag: "ZoomshroomNetwork",
+                                val: "FirstIsland",
+                            ),
+                            (
+                                tag: "MinimushCount",
+                                val: "2",
+                            ),
                         ]),
                         Position([
                             6.5438213,
@@ -2086,15 +2102,22 @@
                             0.561,
                         ]),
                         Tags([
-                            ("ZoomshroomNetwork", "SmallIsland"),
+                            (
+                                tag: "ZoomshroomNetwork",
+                                val: "SecondIsland",
+                            ),
+                            (
+                                tag: "MinimushCount",
+                                val: "1",
+                            ),
                         ]),
                         Position([
-                            10.99688,
-                            4.7353053,
+                            8.119675,
+                            8.256384,
                         ]),
                     ],
                 )),
-                version: 1,
+                version: 3,
             ),
             (
                 value: Some((
@@ -2110,15 +2133,22 @@
                             0.561,
                         ]),
                         Tags([
-                            ("ZoomshroomNetwork", "SmallIsland"),
+                            (
+                                tag: "ZoomshroomNetwork",
+                                val: "SecondIsland",
+                            ),
+                            (
+                                tag: "MinimushCount",
+                                val: "2",
+                            ),
                         ]),
                         Position([
-                            9.339691,
-                            6.1129074,
+                            10.564791,
+                            9.608568,
                         ]),
                     ],
                 )),
-                version: 1,
+                version: 3,
             ),
             (
                 value: Some((
@@ -2134,15 +2164,22 @@
                             0.561,
                         ]),
                         Tags([
-                            ("ZoomshroomNetwork", "SmallIsland"),
+                            (
+                                tag: "ZoomshroomNetwork",
+                                val: "SecondIsland",
+                            ),
+                            (
+                                tag: "MinimushCount",
+                                val: "2",
+                            ),
                         ]),
                         Position([
-                            11.824496,
-                            6.1141973,
+                            11.825473,
+                            6.11119,
                         ]),
                     ],
                 )),
-                version: 1,
+                version: 3,
             ),
             (
                 value: Some((
@@ -2158,15 +2195,22 @@
                             0.561,
                         ]),
                         Tags([
-                            ("ZoomshroomNetwork", "SmallIsland"),
+                            (
+                                tag: "ZoomshroomNetwork",
+                                val: "SecondIsland",
+                            ),
+                            (
+                                tag: "MinimushCount",
+                                val: "2",
+                            ),
                         ]),
                         Position([
-                            8.750534,
-                            7.438102,
+                            9.283773,
+                            6.090856,
                         ]),
                     ],
                 )),
-                version: 1,
+                version: 3,
             ),
             (
                 value: Some((
@@ -2182,15 +2226,22 @@
                             0.561,
                         ]),
                         Tags([
-                            ("ZoomshroomNetwork", "SmallIsland"),
+                            (
+                                tag: "ZoomshroomNetwork",
+                                val: "SecondIsland",
+                            ),
+                            (
+                                tag: "MinimushCount",
+                                val: "1",
+                            ),
                         ]),
                         Position([
-                            11.230082,
-                            8.114496,
+                            11.017212,
+                            4.6065035,
                         ]),
                     ],
                 )),
-                version: 1,
+                version: 3,
             ),
             (
                 value: Some((
@@ -2245,10 +2296,10 @@
                             collision_static: None,
                             blacklist: [],
                             whitelist: [
-                                Weapon,
                                 Player,
-                                World,
                                 Enemy,
+                                World,
+                                Weapon,
                             ],
                             membership: [
                                 World,
@@ -2496,8 +2547,8 @@
                             collision_static: Some(()),
                             blacklist: [],
                             whitelist: [
-                                Weapon,
                                 Player,
+                                Weapon,
                             ],
                             membership: [
                                 World,

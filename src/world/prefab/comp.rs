@@ -59,7 +59,7 @@ pub(super) fn spawn_comps(
             .push((e, name));
     }
 
-    tag_bank.deposit(e, &tags);
+    tag_bank.deposit(e, tags.iter().filter_map(|t| parse_tag(&t.tag, &t.val)));
 
     e
 }
@@ -127,11 +127,27 @@ pub fn physical_from_comps<'a>(
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Clone, Debug, PartialEq)]
+pub struct Tag {
+    tag: String,
+    val: String,
+}
+fn parse_tag(tag: &str, val: &str) -> Option<(glsp::Sym, glsp::Val)> {
+    Some((
+        glsp::sym(tag)
+            .map_err(|e| glsp::eprn!("Couldn't symmify {} tag: {}", tag, e))
+            .ok()?,
+        glsp::parse_1(val, Some("tag value"))
+            .map_err(|e| glsp::eprn!("Couldn't parse {} tag's value: {}", tag, e))
+            .ok()?,
+    ))
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Clone, Debug, PartialEq)]
 pub enum Comp {
     Art(draw::ArtHandle),
     ZOffset(f32),
     DeathAnimation(draw::ArtHandle),
-    Tags(Vec<(String, String)>),
+    Tags(Vec<Tag>),
     Health(usize),
     Position(na::Vector2<f32>),
     Angle(f32),
@@ -188,21 +204,25 @@ impl Comp {
             }
             Tags(tags) => {
                 let mut i = 0;
-                tags.drain_filter(|(tag, val)| {
+                tags.drain_filter(|Tag { tag, val }| {
                     i += 1;
                     ui.horizontal(|ui| {
                         let tag_len_before = tag.len();
                         let tag_focus =
                             ui.add(egui::TextEdit::new(tag).id((i, "tag"))).has_kb_focus;
                         if tag_focus && tag_len_before != tag.len() {
-                            dirty = true;
+                            if parse_tag(&*tag, &*val).is_some() {
+                                dirty = true;
+                            }
                         }
 
                         let val_len_before = val.len();
                         let val_focus =
                             ui.add(egui::TextEdit::new(val).id((i, "val"))).has_kb_focus;
                         if val_focus && val_len_before != val.len() {
-                            dirty = true;
+                            if parse_tag(&*tag, &*val).is_some() {
+                                dirty = true;
+                            }
                         }
 
                         macroquad::is_key_pressed(macroquad::KeyCode::Backspace)
@@ -212,7 +232,10 @@ impl Comp {
                 });
 
                 if ui.button("Add Tag").clicked {
-                    tags.push(("Example".to_string(), String::new()));
+                    tags.push(Tag {
+                        val: "Example".to_string(),
+                        tag: "#n".to_string()
+                    });
                 }
             }
             Position(p) => {

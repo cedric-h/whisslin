@@ -113,8 +113,8 @@ pub struct World {
 impl World {
     pub async fn new() -> Self {
         let glsp_runtime = glsp::Runtime::new();
-        let config = ron::de::from_reader(&*load_file("config.ron").await.unwrap()).unwrap();
-        let images = draw::Images::load(&config).await;
+        let config: Config = ron::de::from_reader(&*load_file("config.ron").await.unwrap()).unwrap();
+        let images = draw::Images::load(&config.draw).await;
         glsp_runtime.run(move || {
             glsp::add_lib(script::Intake::new());
             match glsp::load("script/entry.glsp").and_then(|c| script::Cache::new(&c)) {
